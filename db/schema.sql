@@ -21,6 +21,9 @@ CREATE TABLE trails (
   area       TEXT,                       -- nature park / area label
   trail_no   TEXT,                       -- trail number(s), shown as a tag
   difficulty TEXT    NOT NULL CHECK (difficulty IN ('easy','medium','hard')),
+  must_visit INTEGER NOT NULL DEFAULT 0,   -- 1 = bucket-list pick (red heart in UI)
+  type       TEXT,                         -- 'Loop' | 'Out & back' | 'Traverse' ...
+  season     TEXT,                         -- e.g. 'Jun – Oct'
   length_km  REAL,
   ascent_m   INTEGER,
   duration_h REAL,                       -- decimal hours (3.5 = 3 h 30 min)

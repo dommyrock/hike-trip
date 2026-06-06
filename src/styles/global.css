@@ -10,6 +10,7 @@
   --easy:#34a06a; --easy-bg:rgba(52,160,106,.14); --easy-brd:rgba(52,160,106,.32);
   --medium:#cf9019; --medium-bg:rgba(207,144,25,.16); --medium-brd:rgba(207,144,25,.36);
   --hard:#d24e48; --hard-bg:rgba(210,78,72,.14); --hard-brd:rgba(210,78,72,.34);
+  --must:#e11d48; --must-pin:#f472b6;  /* heart red · pink map pin for must-visits */
   --accent:#5b6b80;
   --r-lg:22px; --r-md:16px; --r-sm:11px; --pill:999px;
 }
@@ -91,6 +92,7 @@ header.top{
 }
 .legend i{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle;}
 .legend .easy i{background:var(--easy);} .legend .medium i{background:var(--medium);} .legend .hard i{background:var(--hard);}
+.legend .mustv i{background:var(--must-pin);}
 @media(max-width:520px){ .legend{display:none;} }
 
 .recenter{
@@ -102,36 +104,37 @@ header.top{
 }
 .recenter:hover{color:var(--ink); transform:translateY(-1px);}
 
-/* ---------- map pins (divIcon) ---------- */
-.pin{
-  width:34px;height:34px;border-radius:50%; display:grid; place-items:center;
-  background:var(--glass-strong); border:1px solid rgba(255,255,255,.85);
+/* ---------- map markers (divIcon) ---------- */
+.mk-pin{
+  width:40px;height:40px;border-radius:50%; display:grid; place-items:center;
+  background:var(--glass-strong); border:2px solid #fff;
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
-  box-shadow:0 6px 14px -6px rgba(30,40,55,.55); position:relative;
-  transition:transform .16s ease, box-shadow .16s ease;
+  box-shadow:0 5px 16px rgba(30,40,55,.28); cursor:pointer;
+  transition:transform .18s cubic-bezier(.34,1.56,.64,1), box-shadow .18s;
 }
-.pin::after{
-  content:""; position:absolute; bottom:-5px; left:50%; width:10px;height:10px;
-  background:var(--glass-strong); border-right:1px solid rgba(255,255,255,.85); border-bottom:1px solid rgba(255,255,255,.85);
-  transform:translateX(-50%) rotate(45deg); border-radius:0 0 3px 0;
-}
-.pin svg{width:18px;height:18px; position:relative; z-index:1;}
-.pin--easy{color:var(--easy);} .pin--medium{color:var(--medium);} .pin--hard{color:var(--hard);}
-.pin.is-active{transform:scale(1.18); box-shadow:0 12px 22px -8px rgba(30,40,55,.6); z-index:1000;}
-.pin.dim{opacity:.32; filter:saturate(.5);}
+.mk-pin svg{width:22px;height:22px;}
+.mk-pin--easy{outline:2px solid var(--easy); outline-offset:1px; color:var(--easy);}
+.mk-pin--medium{outline:2px solid var(--medium); outline-offset:1px; color:var(--medium);}
+.mk-pin--hard{outline:2px solid var(--hard); outline-offset:1px; color:var(--hard);}
+/* must-visit pins go pink regardless of difficulty (declared last so it wins) */
+.mk-pin--must{outline:2px solid var(--must-pin); outline-offset:1px; color:var(--must-pin);}
+.mk-pin.is-active, .mk-pin:hover{transform:scale(1.22); box-shadow:0 10px 26px rgba(30,40,55,.4); z-index:1000;}
 
-/* leaflet popup -> glass */
-.leaflet-popup-content-wrapper{
+/* leaflet hover tooltip -> glass card */
+.leaflet-tooltip.trail-tip{
   background:var(--glass-strong); border:1px solid var(--brd); border-radius:14px;
   backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
   box-shadow:var(--shadow); color:var(--ink);
+  padding:0; white-space:normal; width:236px;
 }
-.leaflet-popup-content{margin:11px 13px; font-family:"Hanken Grotesk";}
-.leaflet-popup-tip{background:var(--glass-strong);}
-.pop h4{font-family:"Bricolage Grotesque"; font-weight:600; font-size:14.5px; margin:0 0 3px; letter-spacing:-.01em;}
-.pop .row{display:flex; gap:10px; font-size:12px; color:var(--ink-2); margin-top:5px;}
-.pop .row b{color:var(--ink); font-weight:600;}
-.leaflet-container a.leaflet-popup-close-button{color:var(--ink-3);}
+.leaflet-tooltip.trail-tip:before{display:none;}
+.tip-in{padding:13px 15px 14px; font-family:"Hanken Grotesk",sans-serif;}
+.tip-head{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;}
+.tip-name{font-family:"Bricolage Grotesque"; font-weight:600; font-size:14.5px; line-height:1.15; letter-spacing:-.01em;}
+.tip-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px;}
+.tip-stat .k{font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3);}
+.tip-stat .v{font-family:"Bricolage Grotesque"; font-weight:600; font-size:14px;}
+.tip-stat .v small{font-family:"Hanken Grotesk"; font-weight:500; font-size:10.5px; color:var(--ink-3);}
 .leaflet-container{font-family:"Hanken Grotesk",sans-serif;}
 
 /* ---------- controls (below the map) ---------- */
@@ -173,6 +176,25 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
 .chip.on[data-d="medium"]{background:var(--medium-bg); border-color:var(--medium-brd); color:#8a5f0f;}
 .chip.on[data-d="hard"]{background:var(--hard-bg); border-color:var(--hard-brd); color:#9a322e;}
 
+.within{
+  height:42px; padding:0 14px; gap:10px;
+  border:1px solid var(--line); background:rgba(255,255,255,.5); border-radius:var(--pill);
+}
+.within .lbl{font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap;}
+.within input[type=range]{
+  -webkit-appearance:none; appearance:none; width:108px; height:4px; border-radius:var(--pill);
+  background:rgba(120,130,145,.35); outline:none; cursor:pointer;
+}
+.within input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--accent); border:2px solid #fff; cursor:pointer;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
+}
+.within input[type=range]::-moz-range-thumb{
+  width:16px; height:16px; border:2px solid #fff; border-radius:50%; background:var(--accent); cursor:pointer;
+}
+.within .val{font-family:"Bricolage Grotesque"; font-weight:600; font-size:13px; min-width:46px; text-align:right; color:var(--ink);}
+
 .sort{margin-left:auto; display:flex; align-items:center; gap:8px;}
 .sort label{font-size:12.5px; color:var(--ink-3);}
 .sort select{
@@ -191,18 +213,13 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
 .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(330px,1fr)); gap:16px;}
 .card{
   position:relative; padding:18px; border-radius:var(--r-md);
+  display:flex; flex-direction:column;
   background:var(--glass); border:1px solid var(--brd);
   backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
   box-shadow:var(--shadow-sm); cursor:pointer; overflow:hidden;
   transition:transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s, border-color .2s;
   animation:cardIn .5s cubic-bezier(.2,.7,.2,1) both;
 }
-.card::before{
-  content:""; position:absolute; left:0; top:0; bottom:0; width:4px;
-}
-.card[data-d="easy"]::before{background:var(--easy);}
-.card[data-d="medium"]::before{background:var(--medium);}
-.card[data-d="hard"]::before{background:var(--hard);}
 .card:hover, .card.is-active{transform:translateY(-3px); box-shadow:var(--shadow); border-color:#fff;}
 
 .card .head{display:flex; align-items:flex-start; gap:12px; margin-bottom:13px;}
@@ -220,23 +237,48 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
   flex:none; margin-left:auto; font:700 10.5px/1 "Hanken Grotesk"; letter-spacing:.05em; text-transform:uppercase;
   padding:6px 10px; border-radius:var(--pill);
 }
-.card[data-d="easy"] .badge{background:var(--easy-bg); color:#1f6f47;}
-.card[data-d="medium"] .badge{background:var(--medium-bg); color:#8a5f0f;}
-.card[data-d="hard"] .badge{background:var(--hard-bg); color:#9a322e;}
+/* standalone variants — used by card heads AND map tooltips */
+.badge--easy{background:var(--easy-bg); color:#1f6f47;}
+.badge--medium{background:var(--medium-bg); color:#8a5f0f;}
+.badge--hard{background:var(--hard-bg); color:#9a322e;}
 
-.stats{display:grid; grid-template-columns:repeat(2,1fr); gap:1px; background:var(--line);
-  border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-bottom:13px;}
-.stat{background:rgba(255,255,255,.45); padding:9px 12px;}
-.stat .k{font-size:10.5px; letter-spacing:.04em; text-transform:uppercase; color:var(--ink-3);}
-.stat .v{font-family:"Bricolage Grotesque"; font-weight:600; font-size:15px; color:var(--ink); margin-top:2px; letter-spacing:-.01em;}
-.stat .v small{font-family:"Hanken Grotesk"; font-weight:500; font-size:11.5px; color:var(--ink-3); margin-left:2px;}
-.stat.dist .v{color:var(--accent);}
+/* "must visit" heart — standalone, tag-sized, just left of the difficulty badge */
+.must{
+  flex:none; margin-left:auto; height:23px; display:grid; place-items:center;
+  color:var(--must);
+  filter:drop-shadow(0 1px 2px rgba(225,29,72,.35));
+}
+.must svg{width:17px; height:17px;}
+.must + .badge{margin-left:-4px;}  /* heart takes the auto-push; badge hugs it */
 
-.card p.blurb{font-size:13px; line-height:1.5; color:var(--ink-2); margin:0 0 12px;}
-.card .foot{display:flex; gap:7px; flex-wrap:wrap;}
+.card p.blurb{font-size:13px; line-height:1.5; color:var(--ink-2); margin:0 0 13px;}
+
+.stats{
+  display:grid; grid-template-columns:repeat(3,1fr); gap:13px 8px;
+  margin-top:auto; margin-bottom:13px; padding-top:13px; border-top:1px solid var(--line);
+}
+.stat .k{font-size:10px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); margin-bottom:3px;}
+.stat .v{font-family:"Bricolage Grotesque"; font-weight:600; font-size:15.5px; line-height:1.1; color:var(--ink); letter-spacing:-.01em;}
+.stat .v small{font-family:"Hanken Grotesk"; font-weight:500; font-size:10.5px; color:var(--ink-3); margin-left:2px;}
+
+/* trail-number + access pills, just above the footer */
+.card .tags{display:flex; gap:7px; flex-wrap:wrap; margin-bottom:11px;}
 .tag{font-size:11px; color:var(--ink-2); background:rgba(255,255,255,.55); border:1px solid var(--line);
   padding:4px 9px; border-radius:var(--pill); display:inline-flex; align-items:center; gap:5px;}
-.tag svg{width:12px;height:12px;color:var(--ink-3);}
+.tag svg{width:12px;height:12px;color:var(--ink-3); flex:none;}
+/* trail-marker tag — pastel yellow, like a waymark plate */
+.tag--trail{background:rgba(240,210,90,.22); border-color:rgba(200,165,45,.35); color:#7d6418; font-weight:600;}
+.tag--trail svg{color:#a8862a;}
+
+.card .foot{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+.card .dist{display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--ink-2);}
+.card .dist svg{width:14px; height:14px; color:var(--accent); flex:none;}
+.card .seemap{
+  font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--accent);
+  display:flex; align-items:center; gap:5px; white-space:nowrap;
+  opacity:0; transition:opacity .15s;
+}
+.card:hover .seemap, .card.is-active .seemap{opacity:1;}
 
 .empty{grid-column:1/-1; text-align:center; padding:48px 20px; color:var(--ink-3); font-size:14px;}
 

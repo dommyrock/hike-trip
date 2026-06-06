@@ -1,23 +1,24 @@
 ---
-import { fmtDuration, DIFF_LABEL } from '../lib/geo.js';
+import { fmtDurationShort, DIFF_LABEL } from '../lib/geo.js';
 
 interface Props {
   trail: any;
   distKm: number;
+  baseName?: string;
   index?: number;
 }
 
-const { trail: t, distKm, index = 0 } = Astro.props;
+const { trail: t, distKm, baseName = 'Ortisei', index = 0 } = Astro.props;
 
 // Mirror the client `statBlock()` helper exactly.
 type Stat = { k: string; v: string; unit?: string };
 const stats: Stat[] = [
-  { k: 'From', v: distKm.toFixed(1), unit: 'km' },
   { k: 'Peak', v: t.peakM.toLocaleString('en-US'), unit: 'm' },
   { k: 'Length', v: String(t.lengthKm), unit: 'km' },
   { k: 'Ascent', v: '+' + t.ascentM, unit: 'm' },
-  { k: 'Walk time', v: fmtDuration(t.durationH) },
-  { k: 'Massif', v: t.peakName },
+  { k: 'Time', v: fmtDurationShort(t.durationH) },
+  { k: 'Type', v: t.type },
+  { k: 'Season', v: t.season },
 ];
 
 const delay = Math.min(index * 45, 320);
@@ -37,26 +38,39 @@ const delay = Math.min(index * 45, 320);
       <h3>{t.name}</h3>
       <div class="area">{t.area}</div>
     </div>
-    <span class="badge">{DIFF_LABEL[t.difficulty]}</span>
+    {t.mustVisit && (
+      <span class="must" title="Must visit">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" /></svg>
+      </span>
+    )}
+    <span class={`badge badge--${t.difficulty}`}>{DIFF_LABEL[t.difficulty]}</span>
   </div>
+
+  <p class="blurb">{t.blurb}</p>
 
   <div class="stats">
     {stats.map((s) => (
-      <div class={s.k === 'From' ? 'stat dist' : 'stat'}>
+      <div class="stat">
         <div class="k">{s.k}</div>
         <div class="v">{s.v}{s.unit && <small>{s.unit}</small>}</div>
       </div>
     ))}
   </div>
 
-  <p class="blurb">{t.blurb}</p>
-
-  <div class="foot">
-    <span class="tag">
+  <div class="tags">
+    <span class="tag tag--trail" title="Trail marker — the route number on signposts along the way">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-3 8 3v10M4 17l8 3 8-3M4 17V7" /></svg>{t.trail}
     </span>
     <span class="tag">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4M5 11v6m14-6v6M8 17v2m8-2v2" /></svg>{t.access}
     </span>
+  </div>
+
+  <div class="foot">
+    <span class="dist">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z" /><circle cx="12" cy="10" r="2.4" /></svg>
+      {distKm.toFixed(1)} km from {baseName.split(' ')[0]}
+    </span>
+    <span class="seemap">VIEW ON MAP &rarr;</span>
   </div>
 </article>

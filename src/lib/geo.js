@@ -24,6 +24,13 @@ export function fmtDuration(h) {
   return mins === 0 ? `${hours} h` : `${hours} h ${mins} min`;
 }
 
+// Compact variant for tight stat cells: "45 min", "~3 h", "~6.3 h".
+export function fmtDurationShort(h) {
+  if (h < 1) return `${Math.round(h * 60)} min`;
+  const v = Math.round(h * 10) / 10;
+  return `~${v} h`;
+}
+
 // Known base towns / trail bases around Val Gardena with exact coordinates,
 // so the "From" field resolves instantly without any network call.
 export const BASES = {

@@ -25,7 +25,7 @@ const lines = [
   `INSERT INTO origins (id, slug, name, region, lat, lng) VALUES`,
   `  (1, ${q(ORIGIN.slug)}, ${q(ORIGIN.name)}, ${q(ORIGIN.region)}, ${ORIGIN.lat}, ${ORIGIN.lng});`,
   '',
-  'INSERT INTO trails (origin_id, slug, name, area, trail_no, difficulty, length_km, ascent_m, duration_h, peak_m, peak_name, massif, access, start_lat, start_lng, peak_lat, peak_lng, path, blurb) VALUES',
+  'INSERT INTO trails (origin_id, slug, name, area, trail_no, difficulty, must_visit, type, season, length_km, ascent_m, duration_h, peak_m, peak_name, massif, access, start_lat, start_lng, peak_lat, peak_lng, path, blurb) VALUES',
 ];
 
 const rows = trails.map((t) => {
@@ -36,6 +36,9 @@ const rows = trails.map((t) => {
     q(t.area),
     q(t.trail),
     q(t.difficulty),
+    t.mustVisit ? 1 : 0,
+    q(t.type),
+    q(t.season),
     n(t.lengthKm),
     n(t.ascentM),
     n(t.durationH),

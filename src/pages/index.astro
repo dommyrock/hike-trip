@@ -41,6 +41,7 @@ const total = trails.length;
         <span class="easy"><i></i>Easy</span>
         <span class="medium"><i></i>Medium</span>
         <span class="hard"><i></i>Hard</span>
+        <span class="mustv"><i></i>Must visit</span>
       </div>
       <button class="recenter" id="recenter" title="Frame all trails">
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /><circle cx="12" cy="12" r="4.5" /></svg>
@@ -61,6 +62,11 @@ const total = trails.length;
         <button class="chip" data-d="easy"><span class="dot"></span>Easy</button>
         <button class="chip" data-d="medium"><span class="dot"></span>Medium</button>
         <button class="chip" data-d="hard"><span class="dot"></span>Hard</button>
+      </div>
+      <div class="field within">
+        <span class="lbl">Within</span>
+        <input id="dist" type="range" min="2" max="25" step="1" value="25" title="Max distance from base" />
+        <span class="val" id="distVal">Any</span>
       </div>
       <div class="sort">
         <label for="sort">Sort</label>
@@ -91,7 +97,7 @@ const total = trails.length;
     BASES,
     DIFF_RANK,
     DIFF_LABEL,
-    fmtDuration as fmtDur,
+    fmtDurationShort as fmtDur,
   } from '../lib/geo.js';
 
   const COLORS = { easy: '#34a06a', medium: '#cf9019', hard: '#d24e48' };
@@ -139,12 +145,20 @@ const total = trails.length;
     const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' });
     const icon = L.divIcon({
       className: '',
-      html: `<div class="pin pin--${t.difficulty}">${MTN}</div>`,
-      iconSize: [34, 40],
-      iconAnchor: [17, 40],
-      popupAnchor: [0, -36],
+      html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${MTN}</div>`,
+      iconSize: [40, 40],
+      iconAnchor: [20, 20],
     });
-    const marker = L.marker(t.peak, { icon });
+    const marker = L.marker(t.peak, { icon, riseOnHover: true });
+
+    // hover tooltip card (content filled by setTip on each render)
+    marker.bindTooltip('', {
+      className: 'trail-tip',
+      direction: 'top',
+      offset: [0, -16],
+      opacity: 1,
+    });
+
     const group = L.layerGroup([casing, line, marker]);
     group.addTo(map);
     all.addLayer(casing);
@@ -153,23 +167,38 @@ const total = trails.length;
 
     marker.on('mouseover', () => emphasize(t.id, true));
     marker.on('mouseout', () => emphasize(t.id, false));
-    line.on('mouseover', () => emphasize(t.id, true));
-    line.on('mouseout', () => emphasize(t.id, false));
-    marker.on('click', () => focusTrail(t.id, true));
-    line.on('click', () => focusTrail(t.id, true));
+    line.on('mouseover', () => {
+      emphasize(t.id, true);
+      marker.openTooltip();
+    });
+    line.on('mouseout', () => {
+      emphasize(t.id, false);
+      marker.closeTooltip();
+    });
+    marker.on('click', () => scrollToCard(t.id));
+    line.on('click', () => scrollToCard(t.id));
 
     layers[t.id] = { marker, line, casing, group, trail: t };
   });
   map.fitBounds(all.getBounds().pad(0.12));
 
-  function setPopup(t, base) {
+  const badgeHTML = (d) => `<span class="badge badge--${d}">${DIFF_LABEL[d]}</span>`;
+  const tipStat = (k, v, unit) =>
+    `<div class="tip-stat"><div class="k">${k}</div><div class="v">${v}${
+      unit ? ` <small>${unit}</small>` : ''
+    }</div></div>`;
+
+  function setTip(t, base) {
     const d = haversineKm(base.coords, t.start);
-    layers[t.id].marker.bindPopup(
-      `<div class="pop"><h4>${t.name}</h4>` +
-        `<div class="row"><span style="color:${COLORS[t.difficulty]};font-weight:700">${DIFF_LABEL[t.difficulty]}</span>` +
-        `<span><b>${t.peakM.toLocaleString()}</b> m peak</span></div>` +
-        `<div class="row"><span><b>${t.lengthKm}</b> km</span><span><b>${fmtDur(t.durationH)}</b></span>` +
-        `<span><b>${d.toFixed(1)}</b> km from ${base.name}</span></div></div>`
+    layers[t.id].marker.setTooltipContent(
+      `<div class="tip-in">` +
+        `<div class="tip-head"><span class="tip-name">${t.name}</span>${badgeHTML(t.difficulty)}</div>` +
+        `<div class="tip-stats">` +
+        tipStat('Dist · base', d.toFixed(1), 'km') +
+        tipStat('Peak', t.peakM.toLocaleString(), 'm') +
+        tipStat('Length', t.lengthKm, 'km') +
+        tipStat('Time', fmtDur(t.durationH)) +
+        `</div></div>`
     );
   }
 
@@ -181,26 +210,39 @@ const total = trails.length;
     if (on) L0.line.bringToFront();
     const el = L0.marker.getElement && L0.marker.getElement();
     if (el) {
-      const pin = el.querySelector('.pin');
-      if (pin) pin.classList.toggle('is-active', on);
+      const mk = el.querySelector('.mk-pin');
+      if (mk) mk.classList.toggle('is-active', on);
     }
     const card = document.querySelector(`.card[data-id="${id}"]`);
     if (card) card.classList.toggle('is-active', on);
   }
 
-  let lastFocus = null;
-  function focusTrail(id, openPop) {
+  // map item click -> scroll down to its card (flash it briefly)
+  function scrollToCard(id) {
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (!card) return;
+    const y = card.getBoundingClientRect().top + window.pageYOffset - 90;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+    card.classList.add('is-active');
+    setTimeout(() => card.classList.remove('is-active'), 1400);
+  }
+
+  // card click -> fly the map to the trail and bring the map into view
+  function flyToTrail(id) {
     const L0 = layers[id];
     if (!L0) return;
-    map.flyToBounds(L0.line.getBounds().pad(0.4), { duration: 0.6 });
-    if (openPop) setTimeout(() => L0.marker.openPopup(), 350);
-    const card = document.querySelector(`.card[data-id="${id}"]`);
-    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    lastFocus = id;
+    map.flyToBounds(L0.line.getBounds(), { padding: [80, 80], maxZoom: 14, duration: 0.7 });
+    document.querySelector('.mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   // ============================ STATE + RENDER ============================
-  const state = { q: '', diffs: new Set(), base: { name: 'Ortisei', coords: BASES['Ortisei'] }, sort: 'dist' };
+  const state = {
+    q: '',
+    diffs: new Set(),
+    base: { name: 'Ortisei', coords: BASES['Ortisei'] },
+    maxDist: 25, // 25 == "Any"
+    sort: 'dist',
+  };
 
   function visibleTrails() {
     let list = trails.map((t) => ({ ...t, distKm: haversineKm(state.base.coords, t.start) }));
@@ -210,6 +252,7 @@ const total = trails.length;
         (t.name + ' ' + t.area + ' ' + t.massif + ' ' + t.peakName + ' ' + t.blurb).toLowerCase().includes(q)
       );
     if (state.diffs.size) list = list.filter((t) => state.diffs.has(t.difficulty));
+    if (state.maxDist < 25) list = list.filter((t) => t.distKm <= state.maxDist);
     if (state.sort === 'dist') list.sort((a, b) => a.distKm - b.distKm);
     else if (state.sort === 'diff')
       list.sort((a, b) => DIFF_RANK[a.difficulty] - DIFF_RANK[b.difficulty] || a.distKm - b.distKm);
@@ -218,7 +261,7 @@ const total = trails.length;
   }
 
   function statBlock(k, v, unit) {
-    return `<div class="stat${k === 'From' ? ' dist' : ''}"><div class="k">${k}</div><div class="v">${v}${
+    return `<div class="stat"><div class="k">${k}</div><div class="v">${v}${
       unit ? `<small>${unit}</small>` : ''
     }</div></div>`;
   }
@@ -231,20 +274,29 @@ const total = trails.length;
     <div class="head">
       <div class="ico">${MTN}</div>
       <div><h3>${t.name}</h3><div class="area">${t.area}</div></div>
-      <span class="badge">${DIFF_LABEL[t.difficulty]}</span>
+      ${
+        t.mustVisit
+          ? `<span class="must" title="Must visit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>`
+          : ''
+      }
+      <span class="badge badge--${t.difficulty}">${DIFF_LABEL[t.difficulty]}</span>
     </div>
+    <p class="blurb">${t.blurb}</p>
     <div class="stats">
-      ${statBlock('From', t.distKm.toFixed(1), 'km')}
       ${statBlock('Peak', t.peakM.toLocaleString(), 'm')}
       ${statBlock('Length', t.lengthKm, 'km')}
       ${statBlock('Ascent', '+' + t.ascentM, 'm')}
-      ${statBlock('Walk time', fmtDur(t.durationH))}
-      ${statBlock('Massif', t.peakName)}
+      ${statBlock('Time', fmtDur(t.durationH))}
+      ${statBlock('Type', t.type ?? '—')}
+      ${statBlock('Season', t.season ?? '—')}
     </div>
-    <p class="blurb">${t.blurb}</p>
-    <div class="foot">
-      <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-3 8 3v10M4 17l8 3 8-3M4 17V7"/></svg>${t.trail}</span>
+    <div class="tags">
+      <span class="tag tag--trail" title="Trail marker — the route number on signposts along the way"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-3 8 3v10M4 17l8 3 8-3M4 17V7"/></svg>${t.trail}</span>
       <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4M5 11v6m14-6v6M8 17v2m8-2v2"/></svg>${t.access}</span>
+    </div>
+    <div class="foot">
+      <span class="dist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>${t.distKm.toFixed(1)} km from ${state.base.name.split(' ')[0]}</span>
+      <span class="seemap">VIEW ON MAP &rarr;</span>
     </div>
   </article>`;
   }
@@ -258,7 +310,7 @@ const total = trails.length;
       const L0 = layers[t.id];
       if (shown && !map.hasLayer(L0.group)) L0.group.addTo(map);
       if (!shown && map.hasLayer(L0.group)) map.removeLayer(L0.group);
-      if (shown) setPopup(t, state.base);
+      if (shown) setTip(t, state.base);
     });
     grid.innerHTML = list.length
       ? list.map(cardHTML).join('')
@@ -271,9 +323,15 @@ const total = trails.length;
   function wireCards() {
     grid.querySelectorAll('.card').forEach((card) => {
       const id = card.dataset.id;
-      card.addEventListener('mouseenter', () => emphasize(id, true));
-      card.addEventListener('mouseleave', () => emphasize(id, false));
-      card.addEventListener('click', () => focusTrail(id, true));
+      card.addEventListener('mouseenter', () => {
+        emphasize(id, true);
+        layers[id]?.marker.openTooltip();
+      });
+      card.addEventListener('mouseleave', () => {
+        emphasize(id, false);
+        layers[id]?.marker.closeTooltip();
+      });
+      card.addEventListener('click', () => flyToTrail(id));
     });
   }
 
@@ -291,6 +349,13 @@ const total = trails.length;
   });
   document.getElementById('sort').addEventListener('change', (e) => {
     state.sort = e.target.value;
+    render();
+  });
+  const distRange = document.getElementById('dist');
+  const distVal = document.getElementById('distVal');
+  distRange.addEventListener('input', () => {
+    state.maxDist = +distRange.value;
+    distVal.textContent = state.maxDist >= 25 ? 'Any' : `${state.maxDist} km`;
     render();
   });
   document.querySelectorAll('.chip').forEach((chip) => {

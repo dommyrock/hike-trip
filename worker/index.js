@@ -9,6 +9,9 @@ function toTrail(r) {
     area: r.area,
     trail: r.trail_no,
     difficulty: r.difficulty,
+    mustVisit: !!r.must_visit,
+    type: r.type,
+    season: r.season,
     lengthKm: r.length_km,
     ascentM: r.ascent_m,
     durationH: r.duration_h,
@@ -49,6 +52,7 @@ export default {
 
       const { results } = await env.DB.prepare(
         `SELECT t.slug, t.name, t.area, t.trail_no, t.difficulty,
+                t.must_visit, t.type, t.season,
                 t.length_km, t.ascent_m, t.duration_h,
                 t.peak_m, t.peak_name, t.massif, t.access,
                 t.start_lat, t.start_lng, t.peak_lat, t.peak_lng,
