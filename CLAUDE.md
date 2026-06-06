@@ -26,8 +26,10 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
 - `db/seed.sql` is generated — never edit by hand.
 - Basemap: standard OSM tiles (user preference: default OSM look, tiles washed ~20%
   via `.leaflet-tile-pane{filter:saturate(.8)}`); Terrain toggle = OpenTopoMap.
-- `ortisei-trails-preview.html` is a standalone single-file mirror of the app —
-  apply map/UI changes there too, or delete it once obsolete.
+- PWA: `public/manifest.webmanifest` + `public/icons/` + `public/sw.js`
+  (registered in `Base.astro`). SW is hand-rolled: navigations and `/api/trails`
+  network-first with cache fallback; `/_astro/` and fonts cache-first; map tiles
+  cache-first capped at 400. Bump `VERSION` in sw.js only on strategy changes.
 
 ## Trail data conventions
 

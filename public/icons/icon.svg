@@ -1,0 +1,15 @@
+<!-- App-icon source: full-bleed background, glyph inside the central 80%
+     (maskable safe zone). Regeneration: see "PWA" section in README. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6e7e93"/>
+      <stop offset="1" stop-color="#475262"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#g)"/>
+  <g transform="translate(80 64) scale(11)" fill="none" stroke="#ffffff" stroke-width="2.1" stroke-linejoin="round">
+    <path d="M5 25h22L18 9l-3.6 6.3L11 11 5 25Z"/>
+    <path d="M14.4 15.3 18 9"/>
+  </g>
+</svg>

@@ -104,6 +104,25 @@ Astro site is served from Cloudflare's edge cache (free, unmetered), and only
   (100k req/day free); D1 free tier is 5M row reads/day — this app reads ~10
   rows per visit.
 
+### PWA
+
+The site is installable ("Add to Home Screen") and works offline:
+
+- `public/manifest.webmanifest` + `public/icons/` (PNGs rendered from `icon.svg`)
+  make it installable; `Base.astro` links them and registers the service worker.
+- `public/sw.js` caches the app shell and the last `/api/trails` response
+  (network-first, so you always get fresh data online), hashed bundles and fonts
+  (cache-first, immutable), and up to ~400 map tiles you've already viewed.
+- Offline you get: the full trail list, cards and stats, plus whatever map areas
+  you browsed while online. Fresh tiles need a connection.
+- To regenerate icons after editing `public/icons/icon.svg` (macOS):
+  `qlmanage -t -s 512 -o public/icons public/icons/icon.svg`, rename the
+  produced `icon.svg.png` to `icon-512.png`, then
+  `sips -z 192 192 icon-512.png --out icon-192.png` and
+  `sips -z 180 180 icon-512.png --out apple-touch-icon.png`.
+- Bump `VERSION` in `sw.js` only when changing caching strategy — normal site
+  updates flow through automatically (HTML is network-first).
+
 ### Setup (one-time)
 
 ```bash

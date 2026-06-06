@@ -21,6 +21,11 @@ const {
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
+    <!-- PWA: installable app + offline shell (see public/sw.js) -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#eaeef3" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+
     <!-- Display: Bricolage Grotesque · Body: Hanken Grotesk -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -33,5 +38,9 @@ const {
   </head>
   <body>
     <slot />
+    <script is:inline>
+      if ('serviceWorker' in navigator)
+        addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    </script>
   </body>
 </html>
