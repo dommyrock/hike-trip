@@ -110,6 +110,13 @@ Astro site is served from Cloudflare's edge cache (free, unmetered), and only
 
 The site is installable ("Add to Home Screen") and works offline:
 
+> **Installing on Android (Chrome):** there is NO automatic install popup —
+> Chrome dropped it. Open the site, then **⋮ menu → "Add to Home screen" →
+> choose "Install"** (newer Chrome: "Install app" directly in the menu). That
+> installs a real WebAPK: app drawer entry, fullscreen, no browser chrome. If
+> you only see "Create shortcut", reload once (SW must finish activating on
+> first visit) and try again.
+
 - `public/manifest.webmanifest` + `public/icons/` (PNGs rendered from `icon.svg`)
   make it installable; `Base.astro` links them and registers the service worker.
 - `public/sw.js` caches the app shell and the last `/api/trails` response

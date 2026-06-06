@@ -191,17 +191,27 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
   border:1px solid var(--line); background:rgba(255,255,255,.5); border-radius:var(--pill);
 }
 .within .lbl{font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap;}
+/* input is full pill height (42px touch target); the slim 4px track is drawn
+   by the track pseudo-elements, thumb re-centred with a negative margin */
 .within input[type=range]{
-  -webkit-appearance:none; appearance:none; width:108px; height:4px; border-radius:var(--pill);
-  background:rgba(120,130,145,.35); outline:none; cursor:pointer;
+  -webkit-appearance:none; appearance:none; width:128px; height:42px; margin:0;
+  background:transparent; outline:none; cursor:pointer; touch-action:manipulation;
+}
+.within input[type=range]::-webkit-slider-runnable-track{
+  height:4px; border-radius:var(--pill); background:rgba(120,130,145,.35);
 }
 .within input[type=range]::-webkit-slider-thumb{
-  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  -webkit-appearance:none; width:20px; height:20px; border-radius:50%;
   background:var(--accent); border:2px solid #fff; cursor:pointer;
   box-shadow:0 1px 4px rgba(0,0,0,.25);
+  margin-top:-8px; /* (4px track − 20px thumb) / 2 */
+}
+.within input[type=range]::-moz-range-track{
+  height:4px; border-radius:var(--pill); background:rgba(120,130,145,.35);
 }
 .within input[type=range]::-moz-range-thumb{
-  width:16px; height:16px; border:2px solid #fff; border-radius:50%; background:var(--accent); cursor:pointer;
+  width:20px; height:20px; border:2px solid #fff; border-radius:50%; background:var(--accent); cursor:pointer;
+  box-shadow:0 1px 4px rgba(0,0,0,.25);
 }
 .within .val{font-family:"Bricolage Grotesque"; font-weight:600; font-size:13px; min-width:46px; text-align:right; color:var(--ink);}
 
@@ -214,7 +224,13 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b929c' stroke-width='2.4'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat:no-repeat; background-position:right 13px center;
 }
-@media(max-width:760px){ .diff-seg{margin-left:0;} .sort{width:100%;} .sort select{flex:1;} }
+@media(max-width:760px){
+  .diff-seg{margin-left:0;}
+  .sort{width:100%;} .sort select{flex:1;}
+  /* slider gets its own full-width row — easy to grab with a thumb */
+  .within{flex:1 1 100%;}
+  .within input[type=range]{flex:1; width:auto;}
+}
 
 .count{margin:18px 2px 12px; font-size:13px; color:var(--ink-3);}
 .count b{font-family:"Bricolage Grotesque"; color:var(--ink); font-weight:600;}
