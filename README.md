@@ -1,8 +1,10 @@
-# Val Gardena Trails — Ortisei
+# Alpine Trails — Val Gardena & Julian Alps
 
 **Live:** <https://hike-trip.dominik-polzer.workers.dev>
 
-A clean, fast hiking-trail finder for the **Ortisei / Val Gardena** area in the Dolomites.
+A clean, fast hiking-trail finder with two base regions: **Ortisei / Val Gardena**
+(Dolomites) and **Kranjska Gora** (Julian Alps · Triglav National Park) — switch
+between them with the region selector above the trail list.
 Trails are drawn on an open-source map, pinned and colour-coded by difficulty
 (🟢 easy · 🟡 medium · 🔴 hard), with a search/filter bar and a card per trail
 showing distance from your base, peak height, length, ascent and walking time.

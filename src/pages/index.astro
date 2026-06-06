@@ -1,16 +1,18 @@
 ---
 import Base from '../layouts/Base.astro';
 import TrailCard from '../components/TrailCard.astro';
-import { trails } from '../data/trails.js';
-import { haversineKm, BASES } from '../lib/geo.js';
+import { trails, origins } from '../data/trails.js';
+import { haversineKm } from '../lib/geo.js';
 
-// First paint / no-JS: distances from Ortisei, nearest trailhead first.
-const ortisei = BASES['Ortisei'];
+// First paint / no-JS: the default origin's trails, distances from its base
+// town, nearest trailhead first. Other origins load client-side via the switcher.
+const home = origins[0];
 const initial = trails
-  .map((t) => ({ ...t, distKm: haversineKm(ortisei, t.start) }))
+  .filter((t) => t.origin === home.slug)
+  .map((t) => ({ ...t, distKm: haversineKm(home.coords, t.start) }))
   .sort((a, b) => a.distKm - b.distKm);
 
-const total = trails.length;
+const total = initial.length;
 ---
 
 <Base>
@@ -21,13 +23,13 @@ const total = trails.length;
           <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z" /><path d="M11.5 12.2 14.5 7" /></svg>
         </div>
         <div>
-          <h1>Val Gardena Trails</h1>
-          <p>Hiking finder · base: Ortisei</p>
+          <h1 id="title">{home.title}</h1>
+          <p id="subtitle">Hiking finder · base: {home.name}</p>
         </div>
       </div>
       <div class="meta">
         <span><b id="m-count">{total}</b> trails</span>
-        <span>Dolomites · South Tyrol</span>
+        <span id="m-region">{home.region}</span>
       </div>
     </header>
 
@@ -49,13 +51,18 @@ const total = trails.length;
     </div>
 
     <div class="controls">
+      <div class="field region" title="Trail region — switches the whole dataset">
+        <select id="origin">
+          {origins.map((o) => <option value={o.slug}>{o.region}</option>)}
+        </select>
+      </div>
       <div class="field search">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
         <input id="q" type="text" placeholder="Search trails, peaks, areas…" autocomplete="off" />
       </div>
       <div class="field from">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>
-        <input id="from" type="text" list="bases" value="Ortisei" autocomplete="off" title="Distances are measured from here" />
+        <input id="from" type="text" list="bases" value={home.name} autocomplete="off" title="Distances are measured from here" />
         <datalist id="bases"></datalist>
       </div>
       <div class="field within">
@@ -80,7 +87,7 @@ const total = trails.length;
     </div>
 
     <div class="count" id="count">
-      <b>{initial.length}</b> of {total} trails · distances from <b>Ortisei</b> (straight-line to trailhead)
+      <b>{initial.length}</b> of {total} trails · distances from <b>{home.name}</b> (straight-line to trailhead)
     </div>
 
     <div class="grid" id="grid">
@@ -92,10 +99,9 @@ const total = trails.length;
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
-  import { trails as staticTrails } from '../data/trails.js';
+  import { trails as staticTrails, origins } from '../data/trails.js';
   import {
     haversineKm,
-    BASES,
     DIFF_RANK,
     DIFF_LABEL,
     fmtDurationShort as fmtDur,
@@ -123,65 +129,86 @@ const total = trails.length;
   });
   light.addTo(map);
 
-  // Live data from D1 via the Worker (/api/trails); the bundled dataset is the
-  // fallback so `astro dev` and plain static hosting keep working unchanged.
-  // (Tiles above are already loading while we wait on this.)
-  let trails = staticTrails;
-  try {
-    const r = await fetch('/api/trails?origin=ortisei');
-    if (r.ok) {
-      const j = await r.json();
-      if (Array.isArray(j.trails) && j.trails.length) trails = j.trails;
-    }
-  } catch {
-    /* offline or no API — keep the build-time snapshot */
+  // Pin marking the current base — the "From" location distances are measured
+  // from. Inline-SVG divIcon (same approach as the trail markers — no image
+  // assets, so nothing the bundler can break). Same glyph as the "From" field.
+  const PIN =
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"/><circle cx="12" cy="10" r="2.6" fill="#fff"/></svg>';
+  const pinIcon = L.divIcon({
+    className: '',
+    html: `<div class="base-pin">${PIN}</div>`,
+    iconSize: [34, 34],
+    iconAnchor: [17, 30], // teardrop tip
+    tooltipAnchor: [0, -30],
+  });
+  const basePin = L.marker(origins[0].coords, { icon: pinIcon })
+    .addTo(map)
+    .bindTooltip(origins[0].name, { direction: 'top' });
+
+  // Trail data + map layers are rebuilt whenever the origin (region) changes —
+  // see loadOrigin() at the bottom, which owns fetching D1 data via the Worker
+  // with the bundled dataset as fallback.
+  let trails = [];
+  let layers = {}; // id -> {marker, line, casing, group, trail}
+  let all = L.featureGroup();
+
+  function clearLayers() {
+    Object.values(layers).forEach((L0) => map.removeLayer(L0.group));
+    layers = {};
+    all = L.featureGroup();
   }
 
   // one layer-group + marker per trail
-  const layers = {}; // id -> {marker, line, casing, group, trail}
-  const all = L.featureGroup();
-  trails.forEach((t) => {
-    const col = COLORS[t.difficulty];
-    const casing = L.polyline(t.path, { color: '#ffffff', weight: 8, opacity: 0.7, lineCap: 'round', lineJoin: 'round' });
-    const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' });
-    const icon = L.divIcon({
-      className: '',
-      html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${MTN}</div>`,
-      iconSize: [40, 40],
-      iconAnchor: [20, 20],
-    });
-    const marker = L.marker(t.peak, { icon, riseOnHover: true });
+  function buildLayers() {
+    clearLayers();
+    trails.forEach((t) => {
+      const col = COLORS[t.difficulty];
+      const casing = L.polyline(t.path, { color: '#ffffff', weight: 8, opacity: 0.7, lineCap: 'round', lineJoin: 'round' });
+      const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' });
+      const icon = L.divIcon({
+        className: '',
+        html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${MTN}</div>`,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20],
+      });
+      const marker = L.marker(t.peak, { icon, riseOnHover: true });
 
-    // hover tooltip card (content filled by setTip on each render)
-    marker.bindTooltip('', {
-      className: 'trail-tip',
-      direction: 'top',
-      offset: [0, -16],
-      opacity: 1,
-    });
+      // hover tooltip card (content filled by setTip on each render)
+      marker.bindTooltip('', {
+        className: 'trail-tip',
+        direction: 'top',
+        offset: [0, -16],
+        opacity: 1,
+      });
 
-    const group = L.layerGroup([casing, line, marker]);
-    group.addTo(map);
-    all.addLayer(casing);
-    all.addLayer(line);
-    all.addLayer(marker);
+      const group = L.layerGroup([casing, line, marker]);
+      group.addTo(map);
+      all.addLayer(casing);
+      all.addLayer(line);
+      all.addLayer(marker);
 
-    marker.on('mouseover', () => emphasize(t.id, true));
-    marker.on('mouseout', () => emphasize(t.id, false));
-    line.on('mouseover', () => {
-      emphasize(t.id, true);
-      marker.openTooltip();
-    });
-    line.on('mouseout', () => {
-      emphasize(t.id, false);
-      marker.closeTooltip();
-    });
-    marker.on('click', () => scrollToCard(t.id));
-    line.on('click', () => scrollToCard(t.id));
+      marker.on('mouseover', () => emphasize(t.id, true));
+      marker.on('mouseout', () => emphasize(t.id, false));
+      line.on('mouseover', () => {
+        emphasize(t.id, true);
+        marker.openTooltip();
+      });
+      line.on('mouseout', () => {
+        emphasize(t.id, false);
+        marker.closeTooltip();
+      });
+      marker.on('click', () => scrollToCard(t.id));
+      line.on('click', () => scrollToCard(t.id));
 
-    layers[t.id] = { marker, line, casing, group, trail: t };
-  });
-  map.fitBounds(all.getBounds().pad(0.12));
+      layers[t.id] = { marker, line, casing, group, trail: t };
+    });
+    if (all.getLayers().length) {
+      all.addLayer(basePin); // frame the base pin together with the trails
+      map.fitBounds(all.getBounds().pad(0.12));
+    } else {
+      map.setView(state.origin.coords, 11);
+    }
+  }
 
   const badgeHTML = (d) => `<span class="badge badge--${d}">${DIFF_LABEL[d]}</span>`;
   const tipStat = (k, v, unit) =>
@@ -240,10 +267,17 @@ const total = trails.length;
   const state = {
     q: '',
     diffs: new Set(),
-    base: { name: 'Ortisei', coords: BASES['Ortisei'] },
+    origin: origins[0],
+    base: { name: origins[0].name, coords: origins[0].coords },
     maxDist: 25, // 25 == "Any"
     sort: 'dist',
   };
+
+  // every base change goes through here so the pin tracks the "From" location
+  function setBase(name, coords) {
+    state.base = { name, coords };
+    basePin.setLatLng(coords).setTooltipContent(name);
+  }
 
   function visibleTrails() {
     let list = trails.map((t) => ({ ...t, distKm: haversineKm(state.base.coords, t.start) }));
@@ -338,11 +372,16 @@ const total = trails.length;
 
   // ============================ CONTROLS ============================
   const bl = document.getElementById('bases');
-  Object.keys(BASES).forEach((n) => {
-    const o = document.createElement('option');
-    o.value = n;
-    bl.appendChild(o);
-  });
+  function fillBases() {
+    bl.innerHTML = '';
+    // origins first (typing one switches the whole region), then local base towns
+    const names = new Set([...origins.map((o) => o.name), ...Object.keys(state.origin.bases)]);
+    names.forEach((n) => {
+      const o = document.createElement('option');
+      o.value = n;
+      bl.appendChild(o);
+    });
+  }
 
   document.getElementById('q').addEventListener('input', (e) => {
     state.q = e.target.value;
@@ -376,21 +415,33 @@ const total = trails.length;
   async function resolveBase() {
     const name = fromInput.value.trim();
     if (!name) return;
-    if (BASES[name]) {
-      state.base = { name, coords: BASES[name] };
+    // an origin name switches the whole region (same as the region select)
+    const o = origins.find((x) => x.name.toLowerCase() === name.toLowerCase());
+    if (o) {
+      if (o.slug !== state.origin.slug) {
+        originSel.value = o.slug;
+        loadOrigin(o.slug);
+      } else {
+        setBase(o.name, o.coords);
+        render();
+      }
+      return;
+    }
+    if (state.origin.bases[name]) {
+      setBase(name, state.origin.bases[name]);
       render();
       return;
     }
-    // try Nominatim (OpenStreetMap) for anything else; biased to South Tyrol
+    // try Nominatim (OpenStreetMap) for anything else; biased to the region
     try {
       fromInput.style.opacity = 0.6;
       const url =
         'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-        encodeURIComponent(name + ', South Tyrol, Italy');
+        encodeURIComponent(name + ', ' + state.origin.searchBias);
       const r = await fetch(url, { headers: { Accept: 'application/json' } });
       const j = await r.json();
       if (j && j[0]) {
-        state.base = { name, coords: [parseFloat(j[0].lat), parseFloat(j[0].lon)] };
+        setBase(name, [parseFloat(j[0].lat), parseFloat(j[0].lon)]);
         render();
       }
     } catch (err) {
@@ -427,5 +478,42 @@ const total = trails.length;
     .getElementById('recenter')
     .addEventListener('click', () => map.flyToBounds(all.getBounds().pad(0.12), { duration: 0.6 }));
 
-  render();
+  // ============================ ORIGIN (region) ============================
+  const originSel = document.getElementById('origin');
+  originSel.addEventListener('change', () => loadOrigin(originSel.value));
+
+  // Switch the whole dataset to another origin: bundled data first (instant,
+  // offline-safe), then live D1 via the Worker. Filters survive the switch;
+  // the base resets to the origin's home town.
+  async function loadOrigin(slug) {
+    const o = origins.find((x) => x.slug === slug) || origins[0];
+    state.origin = o;
+    setBase(o.name, o.coords);
+    fromInput.value = o.name;
+    fillBases();
+    document.getElementById('title').textContent = o.title;
+    document.getElementById('subtitle').textContent = `Hiking finder · base: ${o.name}`;
+    document.getElementById('m-region').textContent = o.region;
+    document.title = `${o.title} — ${o.name}`;
+
+    trails = staticTrails.filter((t) => t.origin === o.slug);
+    buildLayers();
+    render();
+
+    try {
+      const r = await fetch(`/api/trails?origin=${o.slug}`);
+      if (r.ok) {
+        const j = await r.json();
+        if (Array.isArray(j.trails) && j.trails.length && state.origin === o) {
+          trails = j.trails;
+          buildLayers();
+          render();
+        }
+      }
+    } catch {
+      /* offline or no API — keep the build-time snapshot */
+    }
+  }
+
+  loadOrigin(origins[0].slug);
 </script>

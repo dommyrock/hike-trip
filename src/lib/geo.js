@@ -31,12 +31,5 @@ export function fmtDurationShort(h) {
   return `~${v} h`;
 }
 
-// Known base towns / trail bases around Val Gardena with exact coordinates,
-// so the "From" field resolves instantly without any network call.
-export const BASES = {
-  Ortisei: [46.5747, 11.6717],
-  'Santa Cristina': [46.5616, 11.7233],
-  'Selva di Val Gardena': [46.5546, 11.7607],
-  'Val di Funes (Zans)': [46.6353, 11.7045],
-  Castelrotto: [46.5667, 11.5594],
-};
+// Base towns with exact coordinates live per-origin in src/data/trails.js
+// (origins[].bases) so the "From" field resolves instantly per region.

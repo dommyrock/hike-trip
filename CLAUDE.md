@@ -1,6 +1,7 @@
 # hike-trip
 
-Hiking-trail finder for Dolomites day trips (base: Ortisei / Val Gardena).
+Hiking-trail finder with multiple "origins" (base regions): Ortisei / Val
+Gardena (Dolomites) and Kranjska Gora (Julian Alps · Triglav NP).
 Astro static shell + one Leaflet island, deployed as a single Cloudflare Worker
 (static assets + `/api/*` from D1/SQLite).
 
@@ -17,17 +18,25 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
 
 ## Architecture / data flow
 
-- `src/data/trails.js` is the **single source of truth**: it seeds D1 (via
-  `db/generate-seed.mjs` → `db/seed.sql`) *and* ships in the client bundle as the
-  offline/API-missing fallback. After editing it: `npm run db:seed:gen && npm run db:apply`.
+- `src/data/trails.js` is the **single source of truth**: it defines the
+  `origins` registry (slug, title, region, home coords, per-origin "From" bases,
+  Nominatim search bias) and merges per-origin trail files
+  (`trails-ortisei.js`, `trails-kranjska-gora.js`), tagging each entry with
+  `origin`. It seeds D1 (via `db/generate-seed.mjs` → `db/seed.sql`) *and* ships
+  in the client bundle as the offline/API-missing fallback. After editing:
+  `npm run db:seed:gen && npm run db:apply`.
 - `worker/index.js` answers `GET /api/trails?origin=<slug>` from D1 (tables:
   `origins` 1──< `trails`) and serves `./dist` for everything else. Response rows are
   mapped back to the exact `trails.js` object shape — keep the two in sync.
+- The client region switcher (`#origin` select in `index.astro`) calls
+  `loadOrigin(slug)`: bundled data renders instantly, then the D1 response
+  replaces it. SSR/no-JS shows `origins[0]` (Ortisei) only.
 - `db/seed.sql` is generated — never edit by hand.
 - Basemap: standard OSM tiles (user preference: default OSM look, tiles washed ~20%
   via `.leaflet-tile-pane{filter:saturate(.8)}`); Terrain toggle = OpenTopoMap.
 - PWA: `public/manifest.webmanifest` + `public/icons/` + `public/sw.js`
-  (registered in `Base.astro`). SW is hand-rolled: navigations and `/api/trails`
+  (registered in `Base.astro` — PROD builds only; `astro dev` unregisters any
+  leftover SW, since cache-first on un-hashed dev URLs serves stale assets). SW is hand-rolled: navigations and `/api/trails`
   network-first with cache fallback; `/_astro/` and fonts cache-first; map tiles
   cache-first capped at 400. Bump `VERSION` in sw.js only on strategy changes.
 
@@ -39,9 +48,15 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
 - `peakM` = highest point actually reached on the route, NOT the massif summit.
 - `path` polylines are schematic (anchored at real trailhead/hut/summit coords,
   but not switchback-accurate). Don't navigate by them; see README for GPX import.
-- All trails currently hang under the single `ortisei` origin (origin_id 1),
-  including far-east day trips (Giau/Falzarego/Tre Cime ~25–70 km away) — distances
-  shown are straight-line from the chosen base, that's expected.
+- Trails belong to one of two origins: `ortisei` (incl. far-east day trips
+  Giau/Falzarego/Tre Cime ~25–70 km away) and `kranjska_gora` (incl. Triglav via
+  Krma ~20 km away) — distances shown are straight-line from the chosen base,
+  that's expected.
+- Kranjska Gora set (2026-06) is OSM-verified, ≥2 sources per figure (sources:
+  hribi.net, outdooractive, komoot, summitpost, tnp.si). **Martuljek Waterfalls
+  deliberately excluded** — gorge landslide damage, upper-falls route officially
+  closed, lower falls has cabled sections; re-evaluate if reopened.
+  kranjska-gora.si blocks scrapers (403) — cross-check its figures indirectly.
 
 ## Known issues
 

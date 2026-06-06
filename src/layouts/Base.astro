@@ -38,9 +38,14 @@ const {
   </head>
   <body>
     <slot />
-    <script is:inline>
-      if ('serviceWorker' in navigator)
-        addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+    <!-- SW only in builds: `astro dev` serves un-hashed module URLs that the SW
+         would cache-first forever -> stale assets after every edit. Dev also
+         unregisters any leftover SW so an affected browser heals itself. -->
+    <script is:inline define:vars={{ prod: import.meta.env.PROD }}>
+      if ('serviceWorker' in navigator) {
+        if (prod) addEventListener('load', () => navigator.serviceWorker.register('/sw.js'));
+        else navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
+      }
     </script>
   </body>
 </html>
