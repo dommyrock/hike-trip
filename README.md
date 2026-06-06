@@ -82,13 +82,13 @@ Astro site is served from Cloudflare's edge cache (free, unmetered), and only
                                 │            CLOUDFLARE EDGE (PoP)            │
                                 │                                             │
   Browser                       │   ┌──────────────────────────────────────┐  │
-  ┌──────────────┐   GET /      │   │  Static assets  (./dist, free)      │  │
+  ┌──────────────┐   GET /      │   │  Static assets  (./dist, free)       │  │
   │ static shell │◄─────────────┼──►│  index.html · JS island · CSS        │  │
   │ + Leaflet    │              │   └──────────────────────────────────────┘  │
-  │   island     │   GET /api/  │   ┌──────────────┐      ┌───────────────┐  │
-  │              │   trails?    │   │  Worker      │ SQL  │  D1 (SQLite)  │  │
-  │              │◄─────────────┼──►│  worker/     │─────►│  origins ──<  │  │
-  └──────┬───────┘   JSON       │   │  index.js    │      │  trails       │  │
+  │   island     │   GET /api/  │   ┌──────────────┐      ┌───────────────┐   │
+  │              │   trails?    │   │  Worker      │ SQL  │  D1 (SQLite)  │   │
+  │              │◄─────────────┼──►│  worker/     │─────►│  origins ──<  │   │
+  └──────┬───────┘   JSON       │   │  index.js    │      │  trails       │   │
          │                      │   └──────────────┘      └───────────────┘  │
          │ map tiles            └─────────────────────────────────────────────┘
          ▼
