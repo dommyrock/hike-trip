@@ -21,6 +21,6 @@ binding = "ASSETS"
 run_worker_first = ["/api/*"]
 
 [[d1_databases]]
-binding = "DB"
+binding = "hike_trip"
 database_name = "hike_trip"
-database_id = "REPLACE-AFTER-wrangler-d1-create"  # local dev works with this placeholder
+database_id = "6dd8a149-d548-4f78-b26b-bd2eb790520c"  # local dev works with this placeholder

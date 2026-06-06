@@ -1,5 +1,7 @@
 # Val Gardena Trails — Ortisei
 
+**Live:** <https://hike-trip.dominik-polzer.workers.dev>
+
 A clean, fast hiking-trail finder for the **Ortisei / Val Gardena** area in the Dolomites.
 Trails are drawn on an open-source map, pinned and colour-coded by difficulty
 (🟢 easy · 🟡 medium · 🔴 hard), with a search/filter bar and a card per trail
