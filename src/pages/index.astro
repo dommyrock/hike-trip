@@ -1,0 +1,366 @@
+---
+import Base from '../layouts/Base.astro';
+import TrailCard from '../components/TrailCard.astro';
+import { trails } from '../data/trails.js';
+import { haversineKm, BASES } from '../lib/geo.js';
+
+// First paint / no-JS: distances from Ortisei, nearest trailhead first.
+const ortisei = BASES['Ortisei'];
+const initial = trails
+  .map((t) => ({ ...t, distKm: haversineKm(ortisei, t.start) }))
+  .sort((a, b) => a.distKm - b.distKm);
+
+const total = trails.length;
+---
+
+<Base>
+  <div class="wrap">
+    <header class="top">
+      <div class="brand">
+        <div class="mk">
+          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z" /><path d="M11.5 12.2 14.5 7" /></svg>
+        </div>
+        <div>
+          <h1>Val Gardena Trails</h1>
+          <p>Hiking finder · base: Ortisei</p>
+        </div>
+      </div>
+      <div class="meta">
+        <span><b id="m-count">{total}</b> trails</span>
+        <span>Dolomites · South Tyrol</span>
+      </div>
+    </header>
+
+    <div class="mapwrap">
+      <div id="map"></div>
+      <div class="map-ctrl layers">
+        <button id="lyr-light" class="on">Standard</button>
+        <button id="lyr-terrain">Terrain</button>
+      </div>
+      <div class="legend">
+        <span class="easy"><i></i>Easy</span>
+        <span class="medium"><i></i>Medium</span>
+        <span class="hard"><i></i>Hard</span>
+      </div>
+      <button class="recenter" id="recenter" title="Frame all trails">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /><circle cx="12" cy="12" r="4.5" /></svg>
+      </button>
+    </div>
+
+    <div class="controls">
+      <div class="field search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
+        <input id="q" type="text" placeholder="Search trails, peaks, areas…" autocomplete="off" />
+      </div>
+      <div class="field from">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>
+        <input id="from" type="text" list="bases" value="Ortisei" autocomplete="off" title="Distances are measured from here" />
+        <datalist id="bases"></datalist>
+      </div>
+      <div class="chips">
+        <button class="chip" data-d="easy"><span class="dot"></span>Easy</button>
+        <button class="chip" data-d="medium"><span class="dot"></span>Medium</button>
+        <button class="chip" data-d="hard"><span class="dot"></span>Hard</button>
+      </div>
+      <div class="sort">
+        <label for="sort">Sort</label>
+        <select id="sort">
+          <option value="dist">Nearest</option>
+          <option value="diff">Easiest first</option>
+          <option value="peak">Highest peak</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="count" id="count">
+      <b>{initial.length}</b> of {total} trails · distances from <b>Ortisei</b> (straight-line to trailhead)
+    </div>
+
+    <div class="grid" id="grid">
+      {initial.map((t, i) => <TrailCard trail={t} distKm={t.distKm} index={i} />)}
+    </div>
+  </div>
+</Base>
+
+<script>
+  import L from 'leaflet';
+  import 'leaflet/dist/leaflet.css';
+  import { trails as staticTrails } from '../data/trails.js';
+  import {
+    haversineKm,
+    BASES,
+    DIFF_RANK,
+    DIFF_LABEL,
+    fmtDuration as fmtDur,
+  } from '../lib/geo.js';
+
+  const COLORS = { easy: '#34a06a', medium: '#cf9019', hard: '#d24e48' };
+  const MTN =
+    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z"/></svg>';
+
+  // ============================ MAP ============================
+  const map = L.map('map', { zoomControl: true, attributionControl: true });
+  map.zoomControl.setPosition('topleft');
+
+  // Standard OpenStreetMap basemap — the default OSM look, untouched.
+  const light = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  });
+  const terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    subdomains: 'abc',
+    maxZoom: 17,
+    attribution:
+      '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a>, <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
+  });
+  light.addTo(map);
+
+  // Live data from D1 via the Worker (/api/trails); the bundled dataset is the
+  // fallback so `astro dev` and plain static hosting keep working unchanged.
+  // (Tiles above are already loading while we wait on this.)
+  let trails = staticTrails;
+  try {
+    const r = await fetch('/api/trails?origin=ortisei');
+    if (r.ok) {
+      const j = await r.json();
+      if (Array.isArray(j.trails) && j.trails.length) trails = j.trails;
+    }
+  } catch {
+    /* offline or no API — keep the build-time snapshot */
+  }
+
+  // one layer-group + marker per trail
+  const layers = {}; // id -> {marker, line, casing, group, trail}
+  const all = L.featureGroup();
+  trails.forEach((t) => {
+    const col = COLORS[t.difficulty];
+    const casing = L.polyline(t.path, { color: '#ffffff', weight: 8, opacity: 0.7, lineCap: 'round', lineJoin: 'round' });
+    const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' });
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="pin pin--${t.difficulty}">${MTN}</div>`,
+      iconSize: [34, 40],
+      iconAnchor: [17, 40],
+      popupAnchor: [0, -36],
+    });
+    const marker = L.marker(t.peak, { icon });
+    const group = L.layerGroup([casing, line, marker]);
+    group.addTo(map);
+    all.addLayer(casing);
+    all.addLayer(line);
+    all.addLayer(marker);
+
+    marker.on('mouseover', () => emphasize(t.id, true));
+    marker.on('mouseout', () => emphasize(t.id, false));
+    line.on('mouseover', () => emphasize(t.id, true));
+    line.on('mouseout', () => emphasize(t.id, false));
+    marker.on('click', () => focusTrail(t.id, true));
+    line.on('click', () => focusTrail(t.id, true));
+
+    layers[t.id] = { marker, line, casing, group, trail: t };
+  });
+  map.fitBounds(all.getBounds().pad(0.12));
+
+  function setPopup(t, base) {
+    const d = haversineKm(base.coords, t.start);
+    layers[t.id].marker.bindPopup(
+      `<div class="pop"><h4>${t.name}</h4>` +
+        `<div class="row"><span style="color:${COLORS[t.difficulty]};font-weight:700">${DIFF_LABEL[t.difficulty]}</span>` +
+        `<span><b>${t.peakM.toLocaleString()}</b> m peak</span></div>` +
+        `<div class="row"><span><b>${t.lengthKm}</b> km</span><span><b>${fmtDur(t.durationH)}</b></span>` +
+        `<span><b>${d.toFixed(1)}</b> km from ${base.name}</span></div></div>`
+    );
+  }
+
+  function emphasize(id, on) {
+    const L0 = layers[id];
+    if (!L0) return;
+    L0.line.setStyle({ weight: on ? 6 : 4, opacity: on ? 1 : 0.9 });
+    L0.casing.setStyle({ weight: on ? 11 : 8, opacity: on ? 0.9 : 0.7 });
+    if (on) L0.line.bringToFront();
+    const el = L0.marker.getElement && L0.marker.getElement();
+    if (el) {
+      const pin = el.querySelector('.pin');
+      if (pin) pin.classList.toggle('is-active', on);
+    }
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (card) card.classList.toggle('is-active', on);
+  }
+
+  let lastFocus = null;
+  function focusTrail(id, openPop) {
+    const L0 = layers[id];
+    if (!L0) return;
+    map.flyToBounds(L0.line.getBounds().pad(0.4), { duration: 0.6 });
+    if (openPop) setTimeout(() => L0.marker.openPopup(), 350);
+    const card = document.querySelector(`.card[data-id="${id}"]`);
+    if (card) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    lastFocus = id;
+  }
+
+  // ============================ STATE + RENDER ============================
+  const state = { q: '', diffs: new Set(), base: { name: 'Ortisei', coords: BASES['Ortisei'] }, sort: 'dist' };
+
+  function visibleTrails() {
+    let list = trails.map((t) => ({ ...t, distKm: haversineKm(state.base.coords, t.start) }));
+    const q = state.q.trim().toLowerCase();
+    if (q)
+      list = list.filter((t) =>
+        (t.name + ' ' + t.area + ' ' + t.massif + ' ' + t.peakName + ' ' + t.blurb).toLowerCase().includes(q)
+      );
+    if (state.diffs.size) list = list.filter((t) => state.diffs.has(t.difficulty));
+    if (state.sort === 'dist') list.sort((a, b) => a.distKm - b.distKm);
+    else if (state.sort === 'diff')
+      list.sort((a, b) => DIFF_RANK[a.difficulty] - DIFF_RANK[b.difficulty] || a.distKm - b.distKm);
+    else if (state.sort === 'peak') list.sort((a, b) => b.peakM - a.peakM);
+    return list;
+  }
+
+  function statBlock(k, v, unit) {
+    return `<div class="stat${k === 'From' ? ' dist' : ''}"><div class="k">${k}</div><div class="v">${v}${
+      unit ? `<small>${unit}</small>` : ''
+    }</div></div>`;
+  }
+
+  function cardHTML(t, i) {
+    return `<article class="card" data-id="${t.id}" data-d="${t.difficulty}" style="animation-delay:${Math.min(
+      i * 45,
+      320
+    )}ms">
+    <div class="head">
+      <div class="ico">${MTN}</div>
+      <div><h3>${t.name}</h3><div class="area">${t.area}</div></div>
+      <span class="badge">${DIFF_LABEL[t.difficulty]}</span>
+    </div>
+    <div class="stats">
+      ${statBlock('From', t.distKm.toFixed(1), 'km')}
+      ${statBlock('Peak', t.peakM.toLocaleString(), 'm')}
+      ${statBlock('Length', t.lengthKm, 'km')}
+      ${statBlock('Ascent', '+' + t.ascentM, 'm')}
+      ${statBlock('Walk time', fmtDur(t.durationH))}
+      ${statBlock('Massif', t.peakName)}
+    </div>
+    <p class="blurb">${t.blurb}</p>
+    <div class="foot">
+      <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-3 8 3v10M4 17l8 3 8-3M4 17V7"/></svg>${t.trail}</span>
+      <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4M5 11v6m14-6v6M8 17v2m8-2v2"/></svg>${t.access}</span>
+    </div>
+  </article>`;
+  }
+
+  const grid = document.getElementById('grid');
+  const countEl = document.getElementById('count');
+  function render() {
+    const list = visibleTrails();
+    trails.forEach((t) => {
+      const shown = list.some((x) => x.id === t.id);
+      const L0 = layers[t.id];
+      if (shown && !map.hasLayer(L0.group)) L0.group.addTo(map);
+      if (!shown && map.hasLayer(L0.group)) map.removeLayer(L0.group);
+      if (shown) setPopup(t, state.base);
+    });
+    grid.innerHTML = list.length
+      ? list.map(cardHTML).join('')
+      : `<div class="empty">No trails match. Try clearing a filter.</div>`;
+    countEl.innerHTML = `<b>${list.length}</b> of ${trails.length} trails · distances from <b>${state.base.name}</b> (straight-line to trailhead)`;
+    document.getElementById('m-count').textContent = list.length;
+    wireCards();
+  }
+
+  function wireCards() {
+    grid.querySelectorAll('.card').forEach((card) => {
+      const id = card.dataset.id;
+      card.addEventListener('mouseenter', () => emphasize(id, true));
+      card.addEventListener('mouseleave', () => emphasize(id, false));
+      card.addEventListener('click', () => focusTrail(id, true));
+    });
+  }
+
+  // ============================ CONTROLS ============================
+  const bl = document.getElementById('bases');
+  Object.keys(BASES).forEach((n) => {
+    const o = document.createElement('option');
+    o.value = n;
+    bl.appendChild(o);
+  });
+
+  document.getElementById('q').addEventListener('input', (e) => {
+    state.q = e.target.value;
+    render();
+  });
+  document.getElementById('sort').addEventListener('change', (e) => {
+    state.sort = e.target.value;
+    render();
+  });
+  document.querySelectorAll('.chip').forEach((chip) => {
+    chip.addEventListener('click', () => {
+      const d = chip.dataset.d;
+      if (state.diffs.has(d)) {
+        state.diffs.delete(d);
+        chip.classList.remove('on');
+      } else {
+        state.diffs.add(d);
+        chip.classList.add('on');
+      }
+      render();
+    });
+  });
+
+  const fromInput = document.getElementById('from');
+  async function resolveBase() {
+    const name = fromInput.value.trim();
+    if (!name) return;
+    if (BASES[name]) {
+      state.base = { name, coords: BASES[name] };
+      render();
+      return;
+    }
+    // try Nominatim (OpenStreetMap) for anything else; biased to South Tyrol
+    try {
+      fromInput.style.opacity = 0.6;
+      const url =
+        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
+        encodeURIComponent(name + ', South Tyrol, Italy');
+      const r = await fetch(url, { headers: { Accept: 'application/json' } });
+      const j = await r.json();
+      if (j && j[0]) {
+        state.base = { name, coords: [parseFloat(j[0].lat), parseFloat(j[0].lon)] };
+        render();
+      }
+    } catch (err) {
+      /* offline / rate-limited: keep previous base */
+    } finally {
+      fromInput.style.opacity = 1;
+    }
+  }
+  fromInput.addEventListener('change', resolveBase);
+  fromInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      resolveBase();
+    }
+  });
+
+  // basemap toggle
+  const bLight = document.getElementById('lyr-light');
+  const bTerrain = document.getElementById('lyr-terrain');
+  bLight.addEventListener('click', () => {
+    if (map.hasLayer(terrain)) map.removeLayer(terrain);
+    light.addTo(map);
+    bLight.classList.add('on');
+    bTerrain.classList.remove('on');
+  });
+  bTerrain.addEventListener('click', () => {
+    if (map.hasLayer(light)) map.removeLayer(light);
+    terrain.addTo(map);
+    bTerrain.classList.add('on');
+    bLight.classList.remove('on');
+  });
+
+  document
+    .getElementById('recenter')
+    .addEventListener('click', () => map.flyToBounds(all.getBounds().pad(0.12), { duration: 0.6 }));
+
+  render();
+</script>

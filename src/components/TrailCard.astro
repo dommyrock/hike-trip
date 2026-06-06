@@ -1,0 +1,62 @@
+---
+import { fmtDuration, DIFF_LABEL } from '../lib/geo.js';
+
+interface Props {
+  trail: any;
+  distKm: number;
+  index?: number;
+}
+
+const { trail: t, distKm, index = 0 } = Astro.props;
+
+// Mirror the client `statBlock()` helper exactly.
+type Stat = { k: string; v: string; unit?: string };
+const stats: Stat[] = [
+  { k: 'From', v: distKm.toFixed(1), unit: 'km' },
+  { k: 'Peak', v: t.peakM.toLocaleString('en-US'), unit: 'm' },
+  { k: 'Length', v: String(t.lengthKm), unit: 'km' },
+  { k: 'Ascent', v: '+' + t.ascentM, unit: 'm' },
+  { k: 'Walk time', v: fmtDuration(t.durationH) },
+  { k: 'Massif', v: t.peakName },
+];
+
+const delay = Math.min(index * 45, 320);
+---
+
+<article
+  class="card"
+  data-id={t.id}
+  data-d={t.difficulty}
+  style={`animation-delay:${delay}ms`}
+>
+  <div class="head">
+    <div class="ico">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z" /></svg>
+    </div>
+    <div>
+      <h3>{t.name}</h3>
+      <div class="area">{t.area}</div>
+    </div>
+    <span class="badge">{DIFF_LABEL[t.difficulty]}</span>
+  </div>
+
+  <div class="stats">
+    {stats.map((s) => (
+      <div class={s.k === 'From' ? 'stat dist' : 'stat'}>
+        <div class="k">{s.k}</div>
+        <div class="v">{s.v}{s.unit && <small>{s.unit}</small>}</div>
+      </div>
+    ))}
+  </div>
+
+  <p class="blurb">{t.blurb}</p>
+
+  <div class="foot">
+    <span class="tag">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-3 8 3v10M4 17l8 3 8-3M4 17V7" /></svg>{t.trail}
+    </span>
+    <span class="tag">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4M5 11v6m14-6v6M8 17v2m8-2v2" /></svg>{t.access}
+    </span>
+  </div>
+</article>

@@ -1,0 +1,26 @@
+# hike-trip — Cloudflare Workers (static assets + D1)
+#
+# One-time setup:
+#   npx wrangler d1 create hike_trip          # prints a database_id
+#   -> paste it into database_id below
+#   npm run db:apply                          # schema + seed, LOCAL dev DB
+#   npm run db:apply:remote                   # schema + seed, PRODUCTION D1
+#
+# Local preview:  npm run preview:cf     (build + wrangler dev, local D1)
+# Deploy:         npm run deploy         (build + wrangler deploy)
+
+name = "hike-trip"
+main = "worker/index.js"
+compatibility_date = "2026-06-01"
+
+[assets]
+directory = "./dist"
+binding = "ASSETS"
+# Only /api/* invokes the Worker; every other request is served straight
+# from the static asset cache (free, unmetered).
+run_worker_first = ["/api/*"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "hike_trip"
+database_id = "REPLACE-AFTER-wrangler-d1-create"  # local dev works with this placeholder
