@@ -63,11 +63,12 @@ const total = trails.length;
         <input id="dist" type="range" min="2" max="25" step="1" value="25" title="Max distance from base" />
         <span class="val" id="distVal">Any</span>
       </div>
-      <button type="button" class="diff-btn" id="diffBtn" aria-expanded="false" aria-controls="diffPop" title="Filter by difficulty">
-        <span class="ddots"><i data-d="easy"></i><i data-d="medium"></i><i data-d="hard"></i></span>
-        Difficulty
-        <svg class="chev" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6" /></svg>
-      </button>
+      <div class="field diff-seg" role="group" aria-label="Filter by difficulty">
+        <span class="lbl">Difficulty</span>
+        <button type="button" class="tgl tgl--easy" data-d="easy" title="Easy" aria-pressed="false"></button>
+        <button type="button" class="tgl tgl--medium" data-d="medium" title="Medium" aria-pressed="false"></button>
+        <button type="button" class="tgl tgl--hard" data-d="hard" title="Hard" aria-pressed="false"></button>
+      </div>
       <div class="sort">
         <label for="sort">Sort</label>
         <select id="sort">
@@ -75,11 +76,6 @@ const total = trails.length;
           <option value="diff">Easiest first</option>
           <option value="peak">Highest peak</option>
         </select>
-      </div>
-      <div class="diff-pop" id="diffPop" hidden>
-        <button class="chip" data-d="easy"><span class="dot"></span>Easy</button>
-        <button class="chip" data-d="medium"><span class="dot"></span>Medium</button>
-        <button class="chip" data-d="hard"><span class="dot"></span>Hard</button>
       </div>
     </div>
 
@@ -363,33 +359,17 @@ const total = trails.length;
     distVal.textContent = state.maxDist >= 25 ? 'Any' : `${state.maxDist} km`;
     render();
   });
-  document.querySelectorAll('.chip').forEach((chip) => {
-    chip.addEventListener('click', () => {
-      const d = chip.dataset.d;
-      if (state.diffs.has(d)) {
-        state.diffs.delete(d);
-        chip.classList.remove('on');
-      } else {
-        state.diffs.add(d);
-        chip.classList.add('on');
-      }
-      syncDiffDots();
+  // difficulty filter — three colour toggles; none active == show all
+  document.querySelectorAll('.tgl').forEach((b) => {
+    b.addEventListener('click', () => {
+      const d = b.dataset.d;
+      const on = !state.diffs.has(d);
+      if (on) state.diffs.add(d);
+      else state.diffs.delete(d);
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-pressed', String(on));
       render();
     });
-  });
-
-  // difficulty filter — one pill that unfolds a chips row inside the toolbar
-  const diffBtn = document.getElementById('diffBtn');
-  const diffPop = document.getElementById('diffPop');
-  function syncDiffDots() {
-    diffBtn.querySelectorAll('.ddots i').forEach((i) => {
-      // no selection == all difficulties shown -> all dots solid
-      i.classList.toggle('off', state.diffs.size > 0 && !state.diffs.has(i.dataset.d));
-    });
-  }
-  diffBtn.addEventListener('click', () => {
-    diffPop.hidden = !diffPop.hidden;
-    diffBtn.setAttribute('aria-expanded', String(!diffPop.hidden));
   });
 
   const fromInput = document.getElementById('from');
