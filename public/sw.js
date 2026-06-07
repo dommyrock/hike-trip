@@ -3,6 +3,8 @@
  * Offline strategy:
  *   navigations   network-first, fall back to the cached shell ('/')
  *   /api/trails   network-first, fall back to last good response (stale > none)
+ *   /gpx/*        network-first — un-hashed files that change on re-bake; a
+ *                 previously fetched track stays available offline
  *   /_astro/*     cache-first (content-hashed, immutable)
  *   map tiles     cache-first, capped — offline you keep the areas you browsed
  *   fonts         cache-first (immutable woff2 from gstatic)
@@ -11,7 +13,7 @@
  * (The app shell itself updates without a bump: HTML is network-first and new
  * builds reference new hashed asset URLs.)
  */
-const VERSION = 'v1';
+const VERSION = 'v2'; // v2: /gpx/ network-first (was falling into cache-first shell)
 const SHELL = `shell-${VERSION}`;   // '/', manifest, icons
 const ASSETS = `assets-${VERSION}`; // hashed bundles + fonts
 const DATA = `data-${VERSION}`;     // /api/trails responses
@@ -79,7 +81,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   if (url.origin === location.origin) {
-    if (url.pathname.startsWith('/api/')) {
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/gpx/')) {
       event.respondWith(networkFirst(request, DATA));
     } else if (url.pathname.startsWith('/_astro/')) {
       event.respondWith(cacheFirst(request, ASSETS));
