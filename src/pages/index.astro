@@ -110,6 +110,9 @@ const total = initial.length;
   // medium uses the matte pure yellow on the map (--medium-map in global.css);
   // badges/cards elsewhere keep the amber --medium
   const COLORS = { easy: '#34a06a', medium: '#d8ac1c', hard: '#d24e48' };
+  // emphasized (hovered / popup-open) trail recolours to deep navy so it stands
+  // out from the difficulty-coloured lines around it
+  const SELECTED = '#13306e';
   const MTN =
     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z"/></svg>';
 
@@ -329,7 +332,9 @@ const total = initial.length;
   function emphasize(id, on) {
     const L0 = layers[id];
     if (!L0) return;
-    L0.line.setStyle({ weight: on ? 6 : 4, opacity: on ? 1 : 0.9 });
+    // the trail whose popup is open stays highlighted even when the pointer leaves it
+    if (!on && id === popupTrailId) return;
+    L0.line.setStyle({ color: on ? SELECTED : COLORS[L0.trail.difficulty], weight: on ? 6 : 4, opacity: on ? 1 : 0.9 });
     L0.casing.setStyle({ weight: on ? 11 : 8, opacity: on ? 0.9 : 0.7 });
     if (on) L0.line.bringToFront();
     const el = L0.marker.getElement && L0.marker.getElement();
@@ -382,11 +387,23 @@ const total = initial.length;
   });
 
   function openTrailPopup(t, latlng, offY) {
+    // switching straight from one trail's popup to another: drop the old highlight
+    // (the shared popup is just moved, so 'popupclose' doesn't fire for it)
+    if (popupTrailId && popupTrailId !== t.id) {
+      const prev = popupTrailId;
+      popupTrailId = null;
+      emphasize(prev, false);
+    }
     trailPopup.options.offset = [0, offY];
     popupTrailId = t.id;
+    emphasize(t.id, true);
     trailPopup.setLatLng(latlng).setContent(detailHTML(t, true)).openOn(map);
   }
-  map.on('popupclose', () => (popupTrailId = null));
+  map.on('popupclose', () => {
+    const id = popupTrailId;
+    popupTrailId = null;
+    emphasize(id, false);
+  });
   map.on('popupopen', (e) => {
     const btn = e.popup.getElement()?.querySelector('.pop-go');
     if (btn)

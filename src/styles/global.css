@@ -483,6 +483,8 @@ header.top {
     text-align: center;
     color: var(--ink-3);
     transition: color 0.18s;
+    -webkit-user-select: none;
+    user-select: none; /* no blue text-selection flash when tapping the ✕ */
 }
 .leaflet-container .trail-pop a.leaflet-popup-close-button:hover,
 .leaflet-container .trail-pop a.leaflet-popup-close-button:focus,
