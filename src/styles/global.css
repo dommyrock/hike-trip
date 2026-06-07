@@ -9,6 +9,8 @@
   --shadow-sm:0 6px 18px -10px rgba(38,48,64,.28);
   --easy:#34a06a; --easy-bg:rgba(52,160,106,.14); --easy-brd:rgba(52,160,106,.32);
   --medium:#cf9019; --medium-bg:rgba(207,144,25,.16); --medium-brd:rgba(207,144,25,.36);
+  /* matte pure yellow — ONLY map lines/pins + difficulty toggle (badges/cards keep --medium) */
+  --medium-map:#d8ac1c; --medium-map-bg:rgba(216,172,28,.18);
   --hard:#d24e48; --hard-bg:rgba(210,78,72,.14); --hard-brd:rgba(210,78,72,.34);
   --must:#e11d48; --must-pin:#f472b6;  /* heart red · pink map pin for must-visits */
   --accent:#5b6b80;
@@ -91,7 +93,7 @@ header.top{
   box-shadow:var(--shadow-sm);
 }
 .legend i{width:9px;height:9px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:middle;}
-.legend .easy i{background:var(--easy);} .legend .medium i{background:var(--medium);} .legend .hard i{background:var(--hard);}
+.legend .easy i{background:var(--easy);} .legend .medium i{background:var(--medium-map);} .legend .hard i{background:var(--hard);}
 .legend .mustv i{background:var(--must-pin);}
 @media(max-width:520px){ .legend{display:none;} }
 
@@ -115,7 +117,7 @@ header.top{
 }
 .mk-pin svg{width:22px;height:22px;}
 .mk-pin--easy{outline:2px solid var(--easy); outline-offset:1px; color:var(--easy);}
-.mk-pin--medium{outline:2px solid var(--medium); outline-offset:1px; color:var(--medium);}
+.mk-pin--medium{outline:2px solid var(--medium-map); outline-offset:1px; color:var(--medium-map);}
 .mk-pin--hard{outline:2px solid var(--hard); outline-offset:1px; color:var(--hard);}
 /* must-visit pins go pink regardless of difficulty (declared last so it wins) */
 .mk-pin--must{outline:2px solid var(--must-pin); outline-offset:1px; color:var(--must-pin);}
@@ -208,7 +210,7 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
   transition:transform .16s, box-shadow .2s;
 }
 .tgl--easy{--c:var(--easy); --c-bg:var(--easy-bg);}
-.tgl--medium{--c:var(--medium); --c-bg:var(--medium-bg);}
+.tgl--medium{--c:var(--medium-map); --c-bg:var(--medium-map-bg);}
 .tgl--hard{--c:var(--hard); --c-bg:var(--hard-bg);}
 .tgl::after{
   content:""; position:absolute; inset:3px; border-radius:50%; background:var(--c);
@@ -304,6 +306,8 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
 /* standalone variants — used by card heads AND map tooltips */
 .badge--easy{background:var(--easy-bg); color:#1f6f47;}
 .badge--medium{background:var(--medium-bg); color:#8a5f0f;}
+/* map widgets (tooltip + popup) follow the map's matte yellow for medium */
+.trail-tip .badge--medium, .trail-pop .badge--medium{background:var(--medium-map-bg); color:#7c640f;}
 .badge--hard{background:var(--hard-bg); color:#9a322e;}
 
 /* "must visit" heart — standalone, tag-sized, just left of the difficulty badge */

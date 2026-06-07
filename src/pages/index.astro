@@ -107,7 +107,9 @@ const total = initial.length;
     fmtDurationShort as fmtDur,
   } from '../lib/geo.js';
 
-  const COLORS = { easy: '#34a06a', medium: '#cf9019', hard: '#d24e48' };
+  // medium uses the matte pure yellow on the map (--medium-map in global.css);
+  // badges/cards elsewhere keep the amber --medium
+  const COLORS = { easy: '#34a06a', medium: '#d8ac1c', hard: '#d24e48' };
   const MTN =
     '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z"/></svg>';
 
