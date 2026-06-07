@@ -16,15 +16,7 @@ export const DIFF_RANK = { easy: 1, medium: 2, hard: 3 };
 
 export const DIFF_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
 
-// Format a duration in hours as e.g. "3 h 30 min".
-export function fmtDuration(h) {
-  const hours = Math.floor(h);
-  const mins = Math.round((h - hours) * 60);
-  if (hours === 0) return `${mins} min`;
-  return mins === 0 ? `${hours} h` : `${hours} h ${mins} min`;
-}
-
-// Compact variant for tight stat cells: "45 min", "~3 h", "~6.3 h".
+// Compact duration for the tight stat cells: "45 min", "~3 h", "~6.3 h".
 export function fmtDurationShort(h) {
   if (h < 1) return `${Math.round(h * 60)} min`;
   const v = Math.round(h * 10) / 10;

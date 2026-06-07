@@ -91,7 +91,7 @@ const total = initial.length;
     </div>
 
     <div class="grid" id="grid">
-      {initial.map((t, i) => <TrailCard trail={t} distKm={t.distKm} index={i} />)}
+      {initial.map((t, i) => <TrailCard trail={t} distKm={t.distKm} baseName={home.name} index={i} />)}
     </div>
   </div>
 </Base>
@@ -100,12 +100,9 @@ const total = initial.length;
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
   import { trails as staticTrails, origins } from '../data/trails.js';
-  import {
-    haversineKm,
-    DIFF_RANK,
-    DIFF_LABEL,
-    fmtDurationShort as fmtDur,
-  } from '../lib/geo.js';
+  import { haversineKm, DIFF_RANK } from '../lib/geo.js';
+  import { ICON } from '../lib/icons.js';
+  import { cardHTML, badgeHTML, statsRow } from '../lib/card.js';
 
   // medium uses the matte pure yellow on the map (--medium-map in global.css);
   // badges/cards elsewhere keep the amber --medium
@@ -113,8 +110,6 @@ const total = initial.length;
   // emphasized (hovered / popup-open) trail recolours to deep navy so it stands
   // out from the difficulty-coloured lines around it
   const SELECTED = '#13306e';
-  const MTN =
-    '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z"/></svg>';
 
   // ============================ MAP ============================
   const map = L.map('map', { zoomControl: true, attributionControl: true });
@@ -196,7 +191,7 @@ const total = initial.length;
       const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', dashArray: '7 11' });
       const icon = L.divIcon({
         className: '',
-        html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${MTN}</div>`,
+        html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${ICON.mountain}</div>`,
         iconSize: [40, 40],
         iconAnchor: [20, 20],
       });
@@ -286,8 +281,6 @@ const total = initial.length;
     }
   }
 
-  const badgeHTML = (d) => `<span class="badge badge--${d}">${DIFF_LABEL[d]}</span>`;
-
   // hover card for a numbered waypoint dot — p = [lat, lng, ele, kmFromStart]
   function wpTipHTML(p, i, total) {
     const title = i === 0 ? 'Start · trailhead' : `Waypoint ${i + 1} of ${total}`;
@@ -297,11 +290,6 @@ const total = initial.length;
     ].filter(Boolean);
     return `<div class="wp-tip-in"><b>${title}</b>${facts.length ? `<span>${facts.join(' · ')}</span>` : ''}</div>`;
   }
-  const tipStat = (k, v, unit) =>
-    `<div class="tip-stat"><div class="k">${k}</div><div class="v">${v}${
-      unit ? ` <small>${unit}</small>` : ''
-    }</div></div>`;
-
   // One detail widget for both the hover tooltip and the click popup: all six
   // card stats in a smaller-font 3-col grid, distance line under the name.
   // withGo adds the wide scroll-to-card button (popup only — tooltips can't
@@ -312,14 +300,7 @@ const total = initial.length;
       `<div class="tip-in">` +
       `<div class="tip-head"><span class="tip-name">${t.name}</span>${badgeHTML(t.difficulty)}</div>` +
       `<div class="tip-dist">${d.toFixed(1)} km from ${state.base.name}</div>` +
-      `<div class="tip-stats">` +
-      tipStat('Peak', t.peakM.toLocaleString(), 'm') +
-      tipStat('Length', t.lengthKm, 'km') +
-      tipStat('Ascent', '+' + t.ascentM, 'm') +
-      tipStat('Time', fmtDur(t.durationH)) +
-      tipStat('Type', t.type ?? '—') +
-      tipStat('Season', t.season ?? '—') +
-      `</div>` +
+      `<div class="tip-stats">${statsRow(t, 'tip-stat')}</div>` +
       (withGo
         ? `<button class="pop-go" type="button" data-id="${t.id}" title="More details" aria-label="Scroll to trail details">` +
           `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg>` +
@@ -491,51 +472,6 @@ const total = initial.length;
     return list;
   }
 
-  function statBlock(k, v, unit) {
-    return `<div class="stat"><div class="k">${k}</div><div class="v">${v}${
-      unit ? `<small>${unit}</small>` : ''
-    }</div></div>`;
-  }
-
-  function cardHTML(t, i) {
-    return `<article class="card" data-id="${t.id}" data-d="${t.difficulty}" style="animation-delay:${Math.min(
-      i * 45,
-      320
-    )}ms">
-    <div class="head">
-      <div class="ico">${MTN}</div>
-      <div><h3>${t.name}</h3><div class="area">${t.area}</div></div>
-      ${
-        t.mustVisit
-          ? `<span class="must" title="Must visit"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg></span>`
-          : ''
-      }
-      <span class="badge badge--${t.difficulty}">${DIFF_LABEL[t.difficulty]}</span>
-    </div>
-    <p class="blurb">${t.blurb}</p>
-    <div class="stats">
-      ${statBlock('Peak', t.peakM.toLocaleString(), 'm')}
-      ${statBlock('Length', t.lengthKm, 'km')}
-      ${statBlock('Ascent', '+' + t.ascentM, 'm')}
-      ${statBlock('Time', fmtDur(t.durationH))}
-      ${statBlock('Type', t.type ?? '—')}
-      ${statBlock('Season', t.season ?? '—')}
-    </div>
-    <div class="tags">
-      <span class="tag tag--trail" title="Trail marker — the route number on signposts along the way"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 17V7l8-3 8 3v10M4 17l8 3 8-3M4 17V7"/></svg>${t.trail}</span>
-      <span class="tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11h18M6 11V7a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v4M5 11v6m14-6v6M8 17v2m8-2v2"/></svg>${t.access}</span>
-    </div>
-    <div class="foot">
-      <span class="dist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>${t.distKm.toFixed(1)} km from ${state.base.name.split(' ')[0]}</span>
-      <span class="acts">${
-        t.gpx
-          ? `<a class="gpxdl" href="${t.gpx}" download title="Download GPX route" aria-label="Download GPX route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>GPX</a>`
-          : ''
-      }<button class="seemap" type="button" title="Show on the map" aria-label="Show on the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg>MAP</button></span>
-    </div>
-  </article>`;
-  }
-
   const grid = document.getElementById('grid');
   const countEl = document.getElementById('count');
   function render() {
@@ -553,7 +489,9 @@ const total = initial.length;
     // highlight doesn't silently linger on the hidden layer
     if (selectedTrailId && !list.some((x) => x.id === selectedTrailId)) selectedTrailId = null;
     grid.innerHTML = list.length
-      ? list.map(cardHTML).join('')
+      ? list
+          .map((t, i) => cardHTML(t, { distKm: t.distKm, baseName: state.base.name, index: i }))
+          .join('')
       : `<div class="empty">No trails match. Try clearing a filter.</div>`;
     countEl.innerHTML = `<b>${list.length}</b> of ${trails.length} trails · distances from <b>${state.base.name}</b> (straight-line to trailhead)`;
     document.getElementById('m-count').textContent = list.length;

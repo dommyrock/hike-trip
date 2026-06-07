@@ -495,11 +495,17 @@ header.top {
 .trail-pop .tip-head {
     padding-right: 26px;
 }
+/* the scroll-to-card arrow is the popup's last element and keeps a 30px tap
+   target, so drop the wrapper's bottom padding here (the hover tooltip, whose
+   last row is the stats, keeps its 14px) */
+.trail-pop .tip-in {
+    padding-bottom: 0;
+}
 /* invisible full-width hit area — only the arrow shows, seamless on the glass */
 .pop-go {
     width: 100%;
     height: 30px;
-    margin: 6px 0 -4px;
+    margin: 6px 0 0;
     padding: 0;
     cursor: pointer;
     display: flex;
