@@ -279,10 +279,12 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
   background:var(--glass); border:1px solid var(--brd);
   backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
   box-shadow:var(--shadow-sm); cursor:pointer; overflow:hidden;
-  transition:transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s, border-color .2s;
+  transition:transform .2s cubic-bezier(.2,.7,.2,1), box-shadow .2s, border-color .2s, background .45s;
   animation:cardIn .5s cubic-bezier(.2,.7,.2,1) both;
 }
 .card:hover, .card.is-active{transform:translateY(-3px); box-shadow:var(--shadow); border-color:#fff;}
+/* scroll-target flash — same waymark yellow as the trail-number tag */
+.card.is-target{background:rgba(240,210,90,.22); border-color:rgba(200,165,45,.45);}
 
 .card .head{display:flex; align-items:flex-start; gap:12px; margin-bottom:13px;}
 .card .ico{

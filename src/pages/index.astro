@@ -277,14 +277,19 @@ const total = initial.length;
     if (card) card.classList.toggle('is-active', on);
   }
 
-  // map item click -> scroll down to its card (flash it briefly)
+  // map item hold / popup arrow -> scroll down to the card and flash it in
+  // waymark yellow (same palette as the trail-number tag) so the target is
+  // unmistakable after the scroll settles
+  let targetTimer;
   function scrollToCard(id) {
     const card = document.querySelector(`.card[data-id="${id}"]`);
     if (!card) return;
     const y = card.getBoundingClientRect().top + window.pageYOffset - 90;
     window.scrollTo({ top: y, behavior: 'smooth' });
-    card.classList.add('is-active');
-    setTimeout(() => card.classList.remove('is-active'), 1400);
+    document.querySelectorAll('.card.is-target').forEach((c) => c.classList.remove('is-active', 'is-target'));
+    card.classList.add('is-active', 'is-target');
+    clearTimeout(targetTimer);
+    targetTimer = setTimeout(() => card.classList.remove('is-active', 'is-target'), 1800);
   }
 
   // card click -> fly the map to the trail. Deliberately NO page scroll — the
