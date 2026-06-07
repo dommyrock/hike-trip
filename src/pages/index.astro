@@ -156,6 +156,9 @@ const total = initial.length;
   let trails = [];
   let layers = {}; // id -> {marker, line, casing, group, trail}
   let all = L.featureGroup();
+  // the trail the user last clicked — stays navy-highlighted until another is
+  // clicked, even after its popup closes (lets you compare lines popup-free)
+  let selectedTrailId = null;
 
   function clearLayers() {
     map.closePopup();
@@ -165,6 +168,7 @@ const total = initial.length;
     });
     layers = {};
     all = L.featureGroup();
+    selectedTrailId = null; // layers are gone (origin switch / rebuild) — drop selection
   }
 
   // komoot-style waypoint dots (route anchors: trailhead, huts, passes) are
@@ -332,8 +336,9 @@ const total = initial.length;
   function emphasize(id, on) {
     const L0 = layers[id];
     if (!L0) return;
-    // the trail whose popup is open stays highlighted even when the pointer leaves it
-    if (!on && id === popupTrailId) return;
+    // the selected trail stays highlighted even when the pointer leaves it
+    // (and across popup close) — only selectTrail() can drop its highlight
+    if (!on && id === selectedTrailId) return;
     L0.line.setStyle({ color: on ? SELECTED : COLORS[L0.trail.difficulty], weight: on ? 6 : 4, opacity: on ? 1 : 0.9 });
     L0.casing.setStyle({ weight: on ? 11 : 8, opacity: on ? 0.9 : 0.7 });
     if (on) L0.line.bringToFront();
@@ -344,6 +349,19 @@ const total = initial.length;
     }
     const card = document.querySelector(`.card[data-id="${id}"]`);
     if (card) card.classList.toggle('is-active', on);
+  }
+
+  // make a trail the persistent selection: it stays navy until another is
+  // chosen. Reverts the previously selected one first.
+  function selectTrail(id) {
+    if (id === selectedTrailId) {
+      emphasize(id, true);
+      return;
+    }
+    const prev = selectedTrailId;
+    selectedTrailId = id;
+    if (prev) emphasize(prev, false);
+    emphasize(id, true);
   }
 
   // map item hold / popup arrow -> scroll down to the card and flash it in
@@ -387,23 +405,17 @@ const total = initial.length;
   });
 
   function openTrailPopup(t, latlng, offY) {
-    // switching straight from one trail's popup to another: drop the old highlight
-    // (the shared popup is just moved, so 'popupclose' doesn't fire for it)
-    if (popupTrailId && popupTrailId !== t.id) {
-      const prev = popupTrailId;
-      popupTrailId = null;
-      emphasize(prev, false);
-    }
     trailPopup.options.offset = [0, offY];
     popupTrailId = t.id;
-    emphasize(t.id, true);
+    // selectTrail handles dropping the previous selection's highlight — covers
+    // switching straight between trails (the shared popup is just moved, so
+    // 'popupclose' never fires for it)
+    selectTrail(t.id);
     trailPopup.setLatLng(latlng).setContent(detailHTML(t, true)).openOn(map);
   }
-  map.on('popupclose', () => {
-    const id = popupTrailId;
-    popupTrailId = null;
-    emphasize(id, false);
-  });
+  // closing the popup keeps the trail selected (navy) so you can compare lines
+  // without a popup open — the highlight only moves when another trail is clicked
+  map.on('popupclose', () => (popupTrailId = null));
   map.on('popupopen', (e) => {
     const btn = e.popup.getElement()?.querySelector('.pop-go');
     if (btn)
@@ -537,6 +549,9 @@ const total = initial.length;
     });
     syncDots();
     if (popupTrailId && !list.some((x) => x.id === popupTrailId)) map.closePopup();
+    // a filtered-out selection is no longer on the map — forget it so its
+    // highlight doesn't silently linger on the hidden layer
+    if (selectedTrailId && !list.some((x) => x.id === selectedTrailId)) selectedTrailId = null;
     grid.innerHTML = list.length
       ? list.map(cardHTML).join('')
       : `<div class="empty">No trails match. Try clearing a filter.</div>`;
