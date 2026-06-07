@@ -24,7 +24,7 @@
     --hard-bg: rgba(210, 78, 72, 0.14);
     --hard-brd: rgba(210, 78, 72, 0.34);
     --must: #e11d48;
-    --must-pin: #f472b6; /* heart red · pink map pin for must-visits */
+    --must-pin: #d6409f; /* heart red · magenta-pink map pin for must-visits (darker than the old #f472b6, purplish — not red) */
     --accent: #5b6b80;
     --r-lg: 22px;
     --r-md: 16px;
