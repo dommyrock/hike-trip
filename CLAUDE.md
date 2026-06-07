@@ -77,12 +77,19 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
 
 ## Known issues
 
-- The ORIGINAL 9 Val Gardena entries (from the first dataset) have suspect
-  coordinates in the Odle/Seceda area: `seceda-ridge` sits at lng ~11.65 but the
-  real Seceda station is [46.598, 11.724] (OSM node 296550944). Likely also
-  affected: `panascharte`, `resciesa-seceda-traverse`, `sass-rigais`, Munkel path
-  waypoints. The 11 trails added later (2026-06) are OSM-verified. Fix = re-verify
-  each against OSM and update `trails.js`, then reseed.
+- ~~The ORIGINAL 9 Val Gardena entries had suspect coordinates in the
+  Odle/Seceda area.~~ **Fixed 2026-06**: all 9 (`seceda-ridge`, `panascharte`,
+  `adolf-munkel`, `raschoetz-promenade`, `col-raiser-firenze`, `alpe-di-siusi`,
+  `sassolungo-circuit`, `sass-rigais`, `resciesa-seceda-traverse`) had their
+  start/peak/path anchors re-derived from OSM (Nominatim) — every Odle-ridge
+  feature was ~0.07° (≈5–6 km) too far west, dropping markers into the wrong
+  terrain (e.g. `sass-rigais` peak was 11.6917 vs the real 11.7668; Alpe di Siusi
+  ~4 km off too). `peakM` elevations were always correct; only lat/lng was wrong.
+  Re-verified against PeakVisor/SummitPost/outdooractive. Reseeded + re-baked.
+  Two keep a (now-correct) schematic path with **no GPX** because BRouter's
+  length gate rejects them: `sassolungo-circuit` (the Langkofelscharte scramble
+  isn't in the hiking graph) and `alpe-di-siusi` (sparse Seiser Alm cart tracks
+  force a ~12 km loop vs the 6 km trail).
 
 ## Go-to sources for hike research (Dolomites / Alps / Europe)
 
