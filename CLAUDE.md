@@ -40,13 +40,35 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
   `src/data/paths-baked.js` and a full-resolution GPX (with elevation, ODbL
   attribution) into `public/gpx/<id>.gpx`. `trails.js` merges baked paths over
   schematic ones and sets `gpx: '/gpx/<id>.gpx'` — which is what makes the
-  light-blue GPX button render on a card. A length sanity-gate (vs `lengthKm`,
-  half-length allowed for 'Out & back') rejects bad routings: those trails keep
-  the schematic path and get no GPX. Currently rejected: `sassolungo-circuit`,
-  `prisojnik-okno` (router picked wrong variants), `triglav-krma` (BRouter
-  watchdog timeout) — fix by adding more intermediate anchor points to the
-  schematic `path` and re-running `npm run bake:geo <id>`. After any bake:
+  light-blue GPX button render on a card. A length sanity-gate compares routed
+  length to the trusted `lengthKm` (half-length also allowed for 'Out & back'):
+  `dev > 0.6` (60 %) ⇒ **REJECT** (schematic kept, no GPX); `dev > 0.35` ⇒
+  **⚠ WARN "check variant"** (baked, but eyeball it). After any bake:
   `npm run db:seed:gen && npm run db:apply`.
+  - ⚠️ **Cache is keyed by `<id>` only, NOT by the anchors.** After changing a
+    trail's `start`/`peak`/`path` you MUST `rm db/geo-cache/<id>.json` (and the
+    stale `public/gpx/<id>.gpx`) before re-baking — otherwise it silently reuses
+    the OLD route. Symptom: the GPX `<wpt>` headers update but the `<trkpt>` track
+    stays in the old place.
+  - **Spot-check a baked route**: (1) read the bake report line (`✓ ok` / `⚠ WARN` /
+    `✗ REJECT`, routed-km vs expected); (2) before trusting it, preview the exact
+    routing by hand at **brouter-web** (https://brouter.de/brouter-web/ → profile
+    *Hiking-Mountain*, drop the same anchor points); (3) confirm the line lands on
+    the real start/peak — first & last `<trkpt>` in the GPX, or the lat/lng range of
+    `baked[id].path`; (4) wrong route ⇒ the anchors are usually wrong, re-check them
+    on OSM/Nominatim (bad anchor ⇒ bad route).
+  - **Fallback when REJECTED or visibly wrong**: add more intermediate anchor points
+    along the real trail to `path`, delete the cache (above), re-run
+    `npm run bake:geo <id>`. If BRouter genuinely can't route it — a scramble /
+    via-ferrata / cable-car gap that isn't a foot path in OSM (e.g. the
+    Langkofelscharte on `sassolungo-circuit`) — either re-scope the trail to a
+    routable linear segment, or hand-import a real GPX (komoot/AllTrails export, or
+    draw in geojson.io — GeoJSON is [lng,lat]) straight into `path` and bypass BRouter.
+  - **Currently rejected (schematic, no GPX)**: `sassolungo-circuit` (Langkofelscharte
+    scramble not in the hiking graph), `alpe-di-siusi` (sparse Seiser Alm cart tracks
+    → ~12 km vs the 6 km loop); plus Kranjska Gora `prisojnik-okno` (router picked
+    wrong variants) and `triglav-krma` (BRouter watchdog timeout) — both unchanged
+    since the original bake, fix per the fallback above.
 - Basemap: standard OSM tiles (user preference: default OSM look, tiles washed ~20%
   via `.leaflet-tile-pane{filter:saturate(.8)}`); Terrain toggle = OpenTopoMap.
 - PWA: `public/manifest.webmanifest` + `public/icons/` + `public/sw.js`
@@ -106,4 +128,4 @@ tourism sites win for access/closures.
 | Trail numbers, lift hours, access rules, closures | **Official tourism sites**: val-gardena.com, suedtirolerland.it, pustertal.org, prags.bz, cortina.dolomiti.org | Authoritative for CAI trail numbers and regulations (e.g. Braies 9–16h summer road closure, Tre Cime toll road). |
 | Serious scrambles / via normale / via ferrata detail | **SummitPost**, **vienormali.it**, **abcdolomiti.com** | Italian sites use CAI grades (T/E/EE/EEA) — EEA ⇒ at least `medium` here. |
 | Trip-report practicalities (parking, crowds, season) | Blogs: moonhoneytravel, earthtrekkers, fullsuitcase, dolomitireview, hiwio, northabroad | Great for "what it's actually like"; verify all numbers elsewhere. |
-| Real route geometry (GPX) | OSM, outdooractive, AllTrails exports; geojson.io to hand-draw | GeoJSON is [lng,lat] — swap to [lat,lng] for Leaflet. |
+| Real route geometry (GPX) | OSM, outdooractive, AllTrails exports; geojson.io to hand-draw; **brouter-web** (brouter.de/brouter-web, *Hiking-Mountain* profile) to preview what `bake:geo` will produce | GeoJSON is [lng,lat] — swap to [lat,lng] for Leaflet. brouter-web won't route scrambles/ferrate/lift gaps — same limit as the bake. |
