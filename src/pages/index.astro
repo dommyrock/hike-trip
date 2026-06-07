@@ -153,6 +153,7 @@ const total = initial.length;
   let all = L.featureGroup();
 
   function clearLayers() {
+    map.closePopup();
     Object.values(layers).forEach((L0) => map.removeLayer(L0.group));
     layers = {};
     all = L.featureGroup();
@@ -197,8 +198,22 @@ const total = initial.length;
         emphasize(t.id, false);
         marker.closeTooltip();
       });
-      marker.on('click', () => scrollToCard(t.id));
-      line.on('click', () => scrollToCard(t.id));
+      // click = open the detail popup in place (no page scroll);
+      // press-and-hold / long-press = jump straight down to the card
+      // offsets compensate Leaflet's built-in 20px popup margin (tip hidden):
+      // -2 → just above the 40px pin; 10 → ~10px above the clicked line point
+      marker.on('click', () => {
+        if (consumeHold()) return;
+        marker.closeTooltip();
+        openTrailPopup(t, marker.getLatLng(), -2);
+      });
+      line.on('click', (e) => {
+        if (consumeHold()) return;
+        marker.closeTooltip();
+        openTrailPopup(t, e.latlng, 10);
+      });
+      wireHold(marker, t);
+      wireHold(line, t);
 
       layers[t.id] = { marker, line, casing, group, trail: t };
     });
@@ -216,18 +231,35 @@ const total = initial.length;
       unit ? ` <small>${unit}</small>` : ''
     }</div></div>`;
 
-  function setTip(t, base) {
-    const d = haversineKm(base.coords, t.start);
-    layers[t.id].marker.setTooltipContent(
+  // One detail widget for both the hover tooltip and the click popup: all six
+  // card stats in a smaller-font 3-col grid, distance line under the name.
+  // withGo adds the wide scroll-to-card button (popup only — tooltips can't
+  // take pointer events).
+  function detailHTML(t, withGo = false) {
+    const d = haversineKm(state.base.coords, t.start);
+    return (
       `<div class="tip-in">` +
-        `<div class="tip-head"><span class="tip-name">${t.name}</span>${badgeHTML(t.difficulty)}</div>` +
-        `<div class="tip-stats">` +
-        tipStat('Dist · base', d.toFixed(1), 'km') +
-        tipStat('Peak', t.peakM.toLocaleString(), 'm') +
-        tipStat('Length', t.lengthKm, 'km') +
-        tipStat('Time', fmtDur(t.durationH)) +
-        `</div></div>`
+      `<div class="tip-head"><span class="tip-name">${t.name}</span>${badgeHTML(t.difficulty)}</div>` +
+      `<div class="tip-dist">${d.toFixed(1)} km from ${state.base.name}</div>` +
+      `<div class="tip-stats">` +
+      tipStat('Peak', t.peakM.toLocaleString(), 'm') +
+      tipStat('Length', t.lengthKm, 'km') +
+      tipStat('Ascent', '+' + t.ascentM, 'm') +
+      tipStat('Time', fmtDur(t.durationH)) +
+      tipStat('Type', t.type ?? '—') +
+      tipStat('Season', t.season ?? '—') +
+      `</div>` +
+      (withGo
+        ? `<button class="pop-go" type="button" data-id="${t.id}" title="More details" aria-label="Scroll to trail details">` +
+          `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg>` +
+          `</button>`
+        : '') +
+      `</div>`
     );
+  }
+
+  function setTip(t) {
+    layers[t.id].marker.setTooltipContent(detailHTML(t));
   }
 
   function emphasize(id, on) {
@@ -255,12 +287,78 @@ const total = initial.length;
     setTimeout(() => card.classList.remove('is-active'), 1400);
   }
 
-  // card click -> fly the map to the trail and bring the map into view
+  // card click -> fly the map to the trail. Deliberately NO page scroll — the
+  // footer MAP button is the explicit "take me to the map" affordance.
   function flyToTrail(id) {
     const L0 = layers[id];
     if (!L0) return;
     map.flyToBounds(L0.line.getBounds(), { padding: [80, 80], maxZoom: 14, duration: 0.7 });
+  }
+
+  function scrollToMap() {
     document.querySelector('.mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  // ==================== MAP POPUP + HOLD-TO-SCROLL ====================
+  // Shared popup for marker/line clicks: the expanded detail card with a wide
+  // "More details" button at the bottom that scrolls to the trail card.
+  // Dismiss = tap anywhere on the map (no close button crowding the badge).
+  let popupTrailId = null;
+  const trailPopup = L.popup({
+    className: 'trail-pop',
+    closeButton: false,
+    minWidth: 252,
+    maxWidth: 252,
+    autoPanPadding: [46, 46],
+  });
+
+  function openTrailPopup(t, latlng, offY) {
+    trailPopup.options.offset = [0, offY];
+    popupTrailId = t.id;
+    trailPopup.setLatLng(latlng).setContent(detailHTML(t, true)).openOn(map);
+  }
+  map.on('popupclose', () => (popupTrailId = null));
+  map.on('popupopen', (e) => {
+    const btn = e.popup.getElement()?.querySelector('.pop-go');
+    if (btn)
+      btn.addEventListener('click', () => {
+        map.closePopup();
+        scrollToCard(btn.dataset.id);
+      });
+  });
+
+  // press-and-hold (~0.5 s) on a marker/line scrolls straight to the card.
+  // contextmenu doubles as native long-press on touch (Leaflet's tapHold
+  // synthesizes it on iOS Safari). suppressClick swallows the click that the
+  // browser fires on release after a hold, so the popup doesn't also open.
+  let holdTimer;
+  let suppressClick = false;
+  let suppressReset;
+  const cancelHold = () => clearTimeout(holdTimer);
+  map.on('movestart zoomstart dragstart', cancelHold);
+  function holdScroll(t) {
+    suppressClick = true;
+    clearTimeout(suppressReset);
+    suppressReset = setTimeout(() => (suppressClick = false), 1200);
+    map.closePopup();
+    scrollToCard(t.id);
+  }
+  function consumeHold() {
+    const held = suppressClick;
+    suppressClick = false;
+    return held;
+  }
+  function wireHold(layer, t) {
+    layer.on('mousedown', () => {
+      cancelHold();
+      holdTimer = setTimeout(() => holdScroll(t), 500);
+    });
+    layer.on('mouseup mouseout', cancelHold);
+    layer.on('contextmenu', (e) => {
+      L.DomEvent.preventDefault(e.originalEvent || e);
+      cancelHold();
+      holdScroll(t);
+    });
   }
 
   // ============================ STATE + RENDER ============================
@@ -331,7 +429,7 @@ const total = initial.length;
     </div>
     <div class="foot">
       <span class="dist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>${t.distKm.toFixed(1)} km from ${state.base.name.split(' ')[0]}</span>
-      <span class="seemap">VIEW ON MAP &rarr;</span>
+      <button class="seemap" type="button" title="Show on the map" aria-label="Show on the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg>MAP</button>
     </div>
   </article>`;
   }
@@ -345,8 +443,9 @@ const total = initial.length;
       const L0 = layers[t.id];
       if (shown && !map.hasLayer(L0.group)) L0.group.addTo(map);
       if (!shown && map.hasLayer(L0.group)) map.removeLayer(L0.group);
-      if (shown) setTip(t, state.base);
+      if (shown) setTip(t);
     });
+    if (popupTrailId && !list.some((x) => x.id === popupTrailId)) map.closePopup();
     grid.innerHTML = list.length
       ? list.map(cardHTML).join('')
       : `<div class="empty">No trails match. Try clearing a filter.</div>`;
@@ -367,6 +466,12 @@ const total = initial.length;
         layers[id]?.marker.closeTooltip();
       });
       card.addEventListener('click', () => flyToTrail(id));
+      // the MAP button is the only thing that scrolls the page up
+      card.querySelector('.seemap')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        flyToTrail(id);
+        scrollToMap();
+      });
     });
   }
 

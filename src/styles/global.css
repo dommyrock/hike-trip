@@ -14,7 +14,7 @@
   --accent:#5b6b80;
   --r-lg:22px; --r-md:16px; --r-sm:11px; --pill:999px;
 }
-*{box-sizing:border-box;}
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;}
 body{
   font-family:"Hanken Grotesk",system-ui,sans-serif;
@@ -107,6 +107,7 @@ header.top{
 /* ---------- map markers (divIcon) ---------- */
 .mk-pin{
   width:40px;height:40px;border-radius:50%; display:grid; place-items:center;
+  -webkit-touch-callout:none; -webkit-user-select:none; user-select:none; /* long-press = scroll-to-card, not iOS callout */
   background:var(--glass-strong); border:2px solid #fff;
   backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
   box-shadow:0 5px 16px rgba(30,40,55,.28); cursor:pointer;
@@ -124,22 +125,42 @@ header.top{
 .base-pin{width:34px;height:34px;color:#1c2330;filter:drop-shadow(0 3px 4px rgba(20,30,45,.45));}
 .base-pin svg{width:100%;height:100%;stroke:#fff;stroke-width:.8;}
 
-/* leaflet hover tooltip -> glass card */
+/* leaflet hover tooltip -> glass card (all 6 card stats, smaller font) */
 .leaflet-tooltip.trail-tip{
   background:var(--glass-strong); border:1px solid var(--brd); border-radius:14px;
   backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
   box-shadow:var(--shadow); color:var(--ink);
-  padding:0; white-space:normal; width:236px;
+  padding:0; white-space:normal; width:252px;
 }
 .leaflet-tooltip.trail-tip:before{display:none;}
 .tip-in{padding:13px 15px 14px; font-family:"Hanken Grotesk",sans-serif;}
-.tip-head{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:10px;}
+.tip-head{display:flex; align-items:flex-start; justify-content:space-between; gap:8px; margin-bottom:4px;}
 .tip-name{font-family:"Bricolage Grotesque"; font-weight:600; font-size:14.5px; line-height:1.15; letter-spacing:-.01em;}
-.tip-stats{display:grid; grid-template-columns:1fr 1fr; gap:8px 10px;}
-.tip-stat .k{font-size:9.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3);}
-.tip-stat .v{font-family:"Bricolage Grotesque"; font-weight:600; font-size:14px;}
-.tip-stat .v small{font-family:"Hanken Grotesk"; font-weight:500; font-size:10.5px; color:var(--ink-3);}
+.tip-dist{font-size:11px; color:var(--ink-3); margin-bottom:10px;}
+.tip-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+.tip-stat .k{font-size:8.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3);}
+.tip-stat .v{font-family:"Bricolage Grotesque"; font-weight:600; font-size:12.5px;}
+.tip-stat .v small{font-family:"Hanken Grotesk"; font-weight:500; font-size:9.5px; color:var(--ink-3);}
 .leaflet-container{font-family:"Hanken Grotesk",sans-serif;}
+
+/* click popup — same glass card as the tooltip + scroll-to-card button.
+   No close button / no tip triangle: dismiss = tap the map. */
+.trail-pop .leaflet-popup-content-wrapper{
+  background:var(--glass-strong); border:1px solid var(--brd); border-radius:14px;
+  backdrop-filter:blur(16px) saturate(160%); -webkit-backdrop-filter:blur(16px) saturate(160%);
+  box-shadow:var(--shadow); color:var(--ink); padding:0;
+}
+.trail-pop .leaflet-popup-content{margin:0; font-family:"Hanken Grotesk",sans-serif; line-height:1.4;}
+.trail-pop .leaflet-popup-tip-container{display:none;}
+/* invisible full-width hit area — only the arrow shows, seamless on the glass */
+.pop-go{
+  width:100%; height:30px; margin:6px 0 -4px; padding:0; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  border:0; background:transparent; color:var(--accent);
+  transition:color .18s, transform .18s;
+}
+.pop-go:hover{color:var(--ink); transform:translateY(1px);}
+.pop-go svg{width:16px; height:16px; flex:none;}
 
 /* ---------- controls (below the map) ---------- */
 .controls{
@@ -202,6 +223,7 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
 .within{
   height:42px; padding:0 14px; gap:10px;
   border:1px solid var(--line); background:rgba(255,255,255,.5); border-radius:var(--pill);
+  -webkit-user-select:none; user-select:none; /* no blue selection flash while dragging on mobile */
 }
 .within .lbl{font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--ink-3); white-space:nowrap;}
 /* input is full pill height (42px touch target); the slim 4px track is drawn
@@ -313,12 +335,16 @@ input:focus{border-color:var(--accent); box-shadow:0 0 0 3px rgba(91,107,128,.18
 .card .foot{display:flex; align-items:center; justify-content:space-between; gap:8px;}
 .card .dist{display:flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; color:var(--ink-2);}
 .card .dist svg{width:14px; height:14px; color:var(--accent); flex:none;}
+/* always-visible MAP button — the explicit (and only) scroll-up-to-map affordance */
 .card .seemap{
-  font-size:10px; font-weight:700; letter-spacing:.05em; color:var(--accent);
-  display:flex; align-items:center; gap:5px; white-space:nowrap;
-  opacity:0; transition:opacity .15s;
+  flex:none; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; cursor:pointer;
+  height:34px; padding:0 14px; border-radius:var(--pill);
+  border:1px solid var(--line); background:rgba(255,255,255,.55);
+  font:700 10px "Hanken Grotesk"; letter-spacing:.06em; color:var(--accent);
+  transition:.18s;
 }
-.card:hover .seemap, .card.is-active .seemap{opacity:1;}
+.card .seemap:hover{color:var(--ink); background:#fff; box-shadow:var(--shadow-sm);}
+.card .seemap svg{width:13px; height:13px; flex:none;}
 
 .empty{grid-column:1/-1; text-align:center; padding:48px 20px; color:var(--ink-3); font-size:14px;}
 
