@@ -67,6 +67,28 @@ Must return JSON rows from D1 (not an error — the client silently falls back t
 bundled data, so check the API directly, not just the page). Then open the URL
 in a browser and confirm the map renders.
 
+## How code & data ship (separate tracks)
+
+```
+                       ┌─ npm run deploy ──────────────────────────┐
+trails.js ──build──►   │  dist/ (static assets) + worker/index.js  │ ──► Cloudflare
+                       │  wrangler.toml just BINDS the existing    │
+                       │  remote DB by database_id — no data I/O   │
+                       └───────────────────────────────────────────┘
+
+                       ┌─ npm run db:apply:remote ─────────────────┐
+trails.js ──db:seed:gen──► db/seed.sql ──► │ executes schema.sql + seed.sql        │ ──► remote D1
+                       │  as SQL statements over the CF API        │
+                       └───────────────────────────────────────────┘
+```
+
+`npm run deploy` **never touches D1 data** — it uploads code and re-attaches the
+binding; the remote DB keeps whatever rows it has. Data only changes when
+`db:apply:remote` explicitly executes SQL against it (drop + reseed from
+`seed.sql`, which is generated from `trails.js`). Local D1 (`.wrangler/state/`)
+and remote D1 never sync in either direction — both are disposable projections
+of `trails.js`, the real source of truth.
+
 ## Recurring tasks
 
 | Task | Command |
