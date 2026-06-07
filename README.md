@@ -48,12 +48,14 @@ npm run preview  # preview the production build locally
 ```
 hike-trip/
 ├─ public/
-│  └─ favicon.svg
+│  ├─ favicon.svg
+│  └─ gpx/                   # generated — downloadable per-trail GPX tracks
 ├─ src/
 │  ├─ components/
 │  │  └─ TrailCard.astro     # one trail card (server-rendered first paint)
 │  ├─ data/
-│  │  └─ trails.js           # ← the trail dataset (build-time snapshot + seed source)
+│  │  ├─ trails.js           # ← the trail dataset (build-time snapshot + seed source)
+│  │  └─ paths-baked.js      # generated — detailed OSM-routed polylines + waypoints
 │  ├─ layouts/
 │  │  └─ Base.astro          # <head>, fonts, global CSS
 │  ├─ lib/
@@ -65,6 +67,8 @@ hike-trip/
 ├─ db/
 │  ├─ schema.sql             # D1 (SQLite): origins ──< trails
 │  ├─ generate-seed.mjs      # trails.js -> seed.sql
+│  ├─ bake-geometry.mjs      # BRouter bake: paths-baked.js + public/gpx/*.gpx
+│  ├─ geo-cache/             # cached BRouter responses (re-runs are offline)
 │  └─ seed.sql               # generated — don't edit by hand
 ├─ worker/
 │  └─ index.js               # /api/trails from D1, static assets for the rest
@@ -150,6 +154,7 @@ npm run db:apply:remote             # schema + seed into production D1
 npm run dev              # plain Astro dev (uses the static fallback data)
 npm run preview:cf       # build + wrangler dev → full stack w/ LOCAL D1 (:8787)
 npm run deploy           # build + deploy Worker + assets to Cloudflare
+npm run bake:geo         # OSM-routed paths + public/gpx/*.gpx (see below)
 npm run db:seed:gen      # regenerate db/seed.sql after editing trails.js
 ```
 
@@ -192,24 +197,47 @@ automatically.
 
 ---
 
-## Swapping in real trail geometry
+## Route geometry & GPX (baked from OSM)
 
-> **Important:** the `path` polylines that ship with this project are **schematic** —
-> sketched between real anchor points (trailheads, cable-car tops, summits, which
-> *are* accurate). They do **not** follow every switchback, so do not navigate by
-> them. Replace them with real tracks before relying on the map in the field.
+The `path` arrays in `trails-*.js` are **schematic anchor points** (trailhead,
+huts, passes, summit — accurate coords). `npm run bake:geo` routes those anchors
+through **[BRouter](https://brouter.de)** (`hiking-mountain` profile over the
+OpenStreetMap path graph) and generates:
 
-To get a real route for a trail:
+- `src/data/paths-baked.js` — detailed, simplified polylines the map actually
+  draws (the dashed route line + numbered waypoint dots), and
+- `public/gpx/<id>.gpx` — full-resolution downloadable tracks with elevation and
+  named trailhead/summit waypoints (ODbL attribution included).
 
-1. Find/record the route on [OpenStreetMap](https://www.openstreetmap.org),
-   [Outdooractive](https://www.outdooractive.com) or
-   [AllTrails](https://www.alltrails.com) and **export a GPX**, or draw it by hand at
-   [geojson.io](https://geojson.io).
-2. Convert the track to a list of `[lat, lng]` pairs.
-3. Paste them into that trail's `path` array in `src/data/trails.js`.
+A length sanity-gate compares each routed line against the researched `lengthKm`
+and rejects bad routings — those trails keep their schematic line and get no GPX
+button. Fix = add a few more intermediate anchors to `path`, then
+`npm run bake:geo <id>` and `npm run db:seed:gen && npm run db:apply`.
+BRouter responses are cached in `db/geo-cache/`, so re-runs are instant.
 
-(Leaflet expects `[lat, lng]`; GeoJSON stores coordinates as `[lng, lat]`, so swap
-the order if you copy straight from a `.geojson` file.)
+### Offline navigation on your phone (GPX)
+
+Every baked trail card shows a light-blue **GPX** button — one tap downloads the
+route, no account or login. Two free apps turn it into real-time offline tracking:
+
+| | [Organic Maps](https://play.google.com/store/apps/details?id=app.organicmaps) | [OsmAnd](https://play.google.com/store/apps/details?id=net.osmand) |
+|---|---|---|
+| Best for | Simple "am I on the path?" — fast, minimal | Follow-track navigation + **off-route warnings** |
+| Free tier | Everything | 7 map regions (plenty); contours are paid on Play Store (free via F-Droid "OsmAnd~") |
+
+**Setup (once, on WiFi):**
+
+1. Install the app and download the offline map regions:
+   *Italy → Trentino-Alto Adige* and *Slovenia*.
+2. On the site, tap **GPX** on a trail card, then open the downloaded file with
+   the app (Organic Maps: stored under *Bookmarks & Tracks*; OsmAnd: *My Places →
+   Tracks*). The track is copied into the app — once per trail and you're set.
+3. On the trail: your live GPS position shows against the route — **airplane mode
+   is fine**, GPS needs no signal or SIM. In OsmAnd you can additionally
+   long-press the track → *Navigation* for voice prompts and drift-off alerts.
+
+Tips: install both for redundancy; out-and-back tracks trace one direction —
+return the same way; the screen drains the battery, not the GPS.
 
 ---
 

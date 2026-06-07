@@ -95,9 +95,36 @@ of `trails.js`, the real source of truth.
 |---|---|
 | Ship code/content changes | `npm run deploy` |
 | Update trail data | edit `src/data/trails.js` → `npm run db:seed:gen` → `npm run db:apply:remote` → `npm run deploy` (client fallback bundle must match D1) |
+| **Re-bake route geometry / GPX** | `npm run bake:geo` → `npm run db:seed:gen` → **`npm run db:apply:remote`** → **`npm run deploy`** — BOTH are required, see below |
 | Full-stack local preview | `npm run preview:cf` (local D1 on :8787) |
 | Inspect prod DB | `npx wrangler d1 execute hike_trip --remote --command 'SELECT slug,name FROM trails'` |
 | Tail prod logs | `npx wrangler tail hike-trip` |
+
+### Why a re-bake needs BOTH commands (not just deploy)
+
+Baked geometry lands in **three places** and the two ship-commands cover
+different ones:
+
+- `public/gpx/*.gpx` + the client bundle (`paths-baked.js` is imported by
+  `trails.js`) → shipped by **`npm run deploy`**
+- the `path`/`waypoints`/`gpx` columns in D1 (via the regenerated `seed.sql`)
+  → shipped only by **`npm run db:apply:remote`**
+
+Skip the D1 step and the page first paints the new routes (bundle), then the
+`/api/trails` refresh silently swaps the **old** routes back in — a confusing
+half-deploy. Order matters when the **schema** changed (new columns): run
+`db:apply:remote` **first**, then `deploy` — the old Worker tolerates extra
+columns, but a new Worker querying columns that don't exist yet 500s the API.
+
+### Service worker / cache busting
+
+**No `VERSION` bump is needed for deploys, data updates or re-bakes.** Updates
+flow automatically: HTML is network-first, JS/CSS bundles get new hashed URLs
+each build, and `/api/trails` + `/gpx/*` are network-first (since `v2`), so
+returning visitors pull fresh routes and GPX on their next online visit. Bump
+`VERSION` in `public/sw.js` **only** when changing the caching *strategy*
+itself (which URLs go in which cache) — that evicts all old caches on
+activate.
 
 ## Replicating to a new account / fresh clone
 
