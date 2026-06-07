@@ -291,7 +291,7 @@ const total = initial.length;
     document.querySelectorAll('.card.is-target').forEach((c) => c.classList.remove('is-active', 'is-target'));
     card.classList.add('is-active', 'is-target');
     clearTimeout(targetTimer);
-    targetTimer = setTimeout(() => card.classList.remove('is-active', 'is-target'), 1800);
+    targetTimer = setTimeout(() => card.classList.remove('is-active', 'is-target'), 1500);
   }
 
   // card click -> fly the map to the trail. Deliberately NO page scroll — the
