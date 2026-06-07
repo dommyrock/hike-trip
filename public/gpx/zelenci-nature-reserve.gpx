@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="hike-trip" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Zelenci Nature Reserve</name>
+    <desc>Routed with BRouter (hiking-mountain) over OpenStreetMap data through hand-verified anchor points. Schematic in places — verify against signage on the ground. Track traces one direction — return the same way.</desc>
+    <copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright>
+    <bounds minlat="46.490134" minlon="13.734337" maxlat="46.494271" maxlon="13.740358"/>
+  </metadata>
+  <wpt lat="46.4943" lon="13.7344"><name>Trailhead — Zelenci Nature Reserve</name><sym>Trail Head</sym></wpt>
+  <wpt lat="46.4924" lon="13.7378"><ele>864</ele><name>Zelenci Springs viewing platform</name><sym>Summit</sym></wpt>
+  <trk>
+    <name>Zelenci Nature Reserve (Boardwalk loop)</name>
+    <type>hiking</type>
+    <trkseg>
+      <trkpt lat="46.494271" lon="13.734515"><ele>841</ele></trkpt>
+      <trkpt lat="46.494232" lon="13.734495"><ele>841</ele></trkpt>
+      <trkpt lat="46.49415" lon="13.734423"><ele>841</ele></trkpt>
+      <trkpt lat="46.494098" lon="13.734363"><ele>841</ele></trkpt>
+      <trkpt lat="46.494004" lon="13.734337"><ele>841</ele></trkpt>
+      <trkpt lat="46.493935" lon="13.734373"><ele>840</ele></trkpt>
+      <trkpt lat="46.493824" lon="13.734405"><ele>840</ele></trkpt>
+      <trkpt lat="46.493628" lon="13.734596"><ele>839</ele></trkpt>
+      <trkpt lat="46.493331" lon="13.735068"><ele>839</ele></trkpt>
+      <trkpt lat="46.493161" lon="13.73549"><ele>839</ele></trkpt>
+      <trkpt lat="46.493108" lon="13.735736"><ele>838</ele></trkpt>
+      <trkpt lat="46.493091" lon="13.735767"><ele>838</ele></trkpt>
+      <trkpt lat="46.492966" lon="13.736003"><ele>838</ele></trkpt>
+      <trkpt lat="46.492919" lon="13.736216"><ele>838</ele></trkpt>
+      <trkpt lat="46.492866" lon="13.736512"><ele>838</ele></trkpt>
+      <trkpt lat="46.492743" lon="13.737"><ele>837</ele></trkpt>
+      <trkpt lat="46.49271" lon="13.737075"><ele>836</ele></trkpt>
+      <trkpt lat="46.492597" lon="13.737209"><ele>836</ele></trkpt>
+      <trkpt lat="46.492542" lon="13.737289"><ele>836</ele></trkpt>
+      <trkpt lat="46.492511" lon="13.737421"><ele>835</ele></trkpt>
+      <trkpt lat="46.492517" lon="13.737504"><ele>835</ele></trkpt>
+      <trkpt lat="46.492555" lon="13.737611"><ele>835</ele></trkpt>
+      <trkpt lat="46.49253" lon="13.737633"><ele>835</ele></trkpt>
+      <trkpt lat="46.492555" lon="13.737611"><ele>835</ele></trkpt>
+      <trkpt lat="46.492517" lon="13.737504"><ele>835</ele></trkpt>
+      <trkpt lat="46.492511" lon="13.737421"><ele>835</ele></trkpt>
+      <trkpt lat="46.492542" lon="13.737289"><ele>836</ele></trkpt>
+      <trkpt lat="46.492597" lon="13.737209"><ele>836</ele></trkpt>
+      <trkpt lat="46.49271" lon="13.737075"><ele>836</ele></trkpt>
+      <trkpt lat="46.492743" lon="13.737"><ele>837</ele></trkpt>
+      <trkpt lat="46.492866" lon="13.736512"><ele>838</ele></trkpt>
+      <trkpt lat="46.492919" lon="13.736216"><ele>838</ele></trkpt>
+      <trkpt lat="46.492826" lon="13.735833"><ele>837</ele></trkpt>
+      <trkpt lat="46.492859" lon="13.735724"><ele>838</ele></trkpt>
+      <trkpt lat="46.492946" lon="13.735545"><ele>839</ele></trkpt>
+      <trkpt lat="46.492912" lon="13.735113"><ele>840</ele></trkpt>
+      <trkpt lat="46.492877" lon="13.734894"><ele>840</ele></trkpt>
+      <trkpt lat="46.49283" lon="13.734818"><ele>839</ele></trkpt>
+      <trkpt lat="46.492766" lon="13.73477"><ele>839</ele></trkpt>
+      <trkpt lat="46.492694" lon="13.734718"><ele>839</ele></trkpt>
+      <trkpt lat="46.492597" lon="13.734691"><ele>840</ele></trkpt>
+      <trkpt lat="46.492418" lon="13.734679"><ele>840</ele></trkpt>
+      <trkpt lat="46.492199" lon="13.734605"><ele>840</ele></trkpt>
+      <trkpt lat="46.492" lon="13.734595"><ele>841</ele></trkpt>
+      <trkpt lat="46.491809" lon="13.734681"><ele>841</ele></trkpt>
+      <trkpt lat="46.491651" lon="13.734834"><ele>841</ele></trkpt>
+      <trkpt lat="46.491568" lon="13.734887"><ele>841</ele></trkpt>
+      <trkpt lat="46.491405" lon="13.734902"><ele>841</ele></trkpt>
+      <trkpt lat="46.491316" lon="13.734882"><ele>841</ele></trkpt>
+      <trkpt lat="46.491159" lon="13.734726"><ele>842</ele></trkpt>
+      <trkpt lat="46.490926" lon="13.734615"><ele>842</ele></trkpt>
+      <trkpt lat="46.490833" lon="13.73458"><ele>843</ele></trkpt>
+      <trkpt lat="46.490689" lon="13.734635"><ele>843</ele></trkpt>
+      <trkpt lat="46.490471" lon="13.734937"><ele>842</ele></trkpt>
+      <trkpt lat="46.490267" lon="13.735388"><ele>842</ele></trkpt>
+      <trkpt lat="46.490226" lon="13.735497"><ele>842</ele></trkpt>
+      <trkpt lat="46.490221" lon="13.735662"><ele>842</ele></trkpt>
+      <trkpt lat="46.490213" lon="13.735703"><ele>842</ele></trkpt>
+      <trkpt lat="46.490166" lon="13.735764"><ele>843</ele></trkpt>
+      <trkpt lat="46.490146" lon="13.735836"><ele>843</ele></trkpt>
+      <trkpt lat="46.490134" lon="13.735949"><ele>844</ele></trkpt>
+      <trkpt lat="46.49016" lon="13.736139"><ele>844</ele></trkpt>
+      <trkpt lat="46.490422" lon="13.737325"><ele>844</ele></trkpt>
+      <trkpt lat="46.490594" lon="13.738159"><ele>844</ele></trkpt>
+      <trkpt lat="46.49061" lon="13.738232"><ele>844</ele></trkpt>
+      <trkpt lat="46.490703" lon="13.738704"><ele>843</ele></trkpt>
+      <trkpt lat="46.490982" lon="13.740358"><ele>841</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

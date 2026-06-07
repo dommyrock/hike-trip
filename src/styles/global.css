@@ -332,6 +332,61 @@ header.top {
     stroke-width: 0.8;
 }
 
+/* numbered waypoint dots along a route (1 = trailhead), zoom-gated in JS */
+.wp-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: #fff;
+    border: 2px solid var(--accent);
+    font: 700 9.5px/1 "Hanken Grotesk";
+    color: var(--ink-2);
+    box-shadow: 0 1px 4px rgba(30, 40, 55, 0.3);
+    cursor: pointer;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+.wp-dot--easy {
+    border-color: var(--easy);
+    color: #1f6f47;
+}
+.wp-dot--medium {
+    border-color: var(--medium-map);
+    color: #7c640f;
+}
+.wp-dot--hard {
+    border-color: var(--hard);
+    color: #9a322e;
+}
+
+/* mini glass tooltip for waypoint dots */
+.leaflet-tooltip.wp-tip {
+    background: var(--glass-strong);
+    border: 1px solid var(--brd);
+    border-radius: 10px;
+    backdrop-filter: blur(12px) saturate(160%);
+    -webkit-backdrop-filter: blur(12px) saturate(160%);
+    box-shadow: var(--shadow-sm);
+    color: var(--ink);
+    padding: 7px 10px;
+    white-space: nowrap;
+}
+.leaflet-tooltip.wp-tip:before {
+    display: none;
+}
+.wp-tip-in b {
+    display: block;
+    font: 600 11.5px "Bricolage Grotesque";
+    letter-spacing: -0.01em;
+}
+.wp-tip-in span {
+    font-size: 10.5px;
+    color: var(--ink-2);
+}
+
 /* leaflet hover tooltip -> glass card (all 6 card stats, smaller font) */
 .leaflet-tooltip.trail-tip {
     background: var(--glass-strong);
@@ -398,7 +453,7 @@ header.top {
 }
 
 /* click popup — same glass card as the tooltip + scroll-to-card button.
-   No close button / no tip triangle: dismiss = tap the map. */
+   Dismiss = subtle ✕ top-right or tap the map. No tip triangle. */
 .trail-pop .leaflet-popup-content-wrapper {
     background: var(--glass-strong);
     border: 1px solid var(--brd);
@@ -416,6 +471,27 @@ header.top {
 }
 .trail-pop .leaflet-popup-tip-container {
     display: none;
+}
+/* subtle ✕ — quiet grey, red on hover/tap, no bg chrome; ".leaflet-container …
+   a." prefix out-specifies leaflet.css's own a.leaflet-popup-close-button rules */
+.leaflet-container .trail-pop a.leaflet-popup-close-button {
+    width: 34px;
+    height: 34px;
+    top: 6px;
+    right: 6px;
+    font: 400 15px/34px "Hanken Grotesk";
+    text-align: center;
+    color: var(--ink-3);
+    transition: color 0.18s;
+}
+.leaflet-container .trail-pop a.leaflet-popup-close-button:hover,
+.leaflet-container .trail-pop a.leaflet-popup-close-button:focus,
+.leaflet-container .trail-pop a.leaflet-popup-close-button:active {
+    color: var(--hard);
+}
+/* badge slides left of the ✕ (and its enlarged hit area) */
+.trail-pop .tip-head {
+    padding-right: 26px;
 }
 /* invisible full-width hit area — only the arrow shows, seamless on the glass */
 .pop-go {
@@ -952,6 +1028,40 @@ input:focus {
     width: 14px;
     height: 14px;
     color: var(--accent);
+    flex: none;
+}
+.card .acts {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+}
+/* GPX download link — light blue so it reads as "file/download" next to MAP */
+.card .gpxdl {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+    height: 34px;
+    padding: 0 13px;
+    border-radius: var(--pill);
+    border: 1px solid rgba(56, 160, 220, 0.32);
+    background: rgba(56, 160, 220, 0.1);
+    font: 700 10px "Hanken Grotesk";
+    letter-spacing: 0.06em;
+    color: #2492cc;
+    text-decoration: none;
+    transition: 0.18s;
+}
+.card .gpxdl:hover {
+    color: #156fa3;
+    background: rgba(56, 160, 220, 0.18);
+    box-shadow: var(--shadow-sm);
+}
+.card .gpxdl svg {
+    width: 13px;
+    height: 13px;
     flex: none;
 }
 /* always-visible MAP button — the explicit (and only) scroll-up-to-map affordance */

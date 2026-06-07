@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="hike-trip" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Vršič Pass Hut Walk &amp; Ajdovska Deklica View</name>
+    <desc>Routed with BRouter (hiking-mountain) over OpenStreetMap data through hand-verified anchor points. Schematic in places — verify against signage on the ground. Track traces one direction — return the same way.</desc>
+    <copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright>
+    <bounds minlat="46.430358" minlon="13.744534" maxlat="46.432715" maxlon="13.748156"/>
+  </metadata>
+  <wpt lat="46.4327" lon="13.7446"><name>Trailhead — Vršič Pass Hut Walk &amp; Ajdovska Deklica View</name><sym>Trail Head</sym></wpt>
+  <wpt lat="46.4324" lon="13.7475"><ele>1725</ele><name>Poštarski dom</name><sym>Summit</sym></wpt>
+  <trk>
+    <name>Vršič Pass Hut Walk &amp; Ajdovska Deklica View (Tičarjev dom – Poštarski dom)</name>
+    <type>hiking</type>
+    <trkseg>
+      <trkpt lat="46.43264" lon="13.744534"><ele>1614</ele></trkpt>
+      <trkpt lat="46.432617" lon="13.744579"><ele>1614</ele></trkpt>
+      <trkpt lat="46.432596" lon="13.744792"><ele>1618</ele></trkpt>
+      <trkpt lat="46.432596" lon="13.744923"><ele>1620</ele></trkpt>
+      <trkpt lat="46.432617" lon="13.744996"><ele>1622</ele></trkpt>
+      <trkpt lat="46.432659" lon="13.745042"><ele>1624</ele></trkpt>
+      <trkpt lat="46.432693" lon="13.745092"><ele>1625</ele></trkpt>
+      <trkpt lat="46.432715" lon="13.745158"><ele>1626</ele></trkpt>
+      <trkpt lat="46.432714" lon="13.745226"><ele>1626</ele></trkpt>
+      <trkpt lat="46.432611" lon="13.745388"><ele>1626</ele></trkpt>
+      <trkpt lat="46.432503" lon="13.745582"><ele>1629</ele></trkpt>
+      <trkpt lat="46.432478" lon="13.745676"><ele>1631</ele></trkpt>
+      <trkpt lat="46.432437" lon="13.745756"><ele>1632</ele></trkpt>
+      <trkpt lat="46.4324" lon="13.745801"><ele>1633</ele></trkpt>
+      <trkpt lat="46.432327" lon="13.745841"><ele>1633</ele></trkpt>
+      <trkpt lat="46.432283" lon="13.745883"><ele>1633</ele></trkpt>
+      <trkpt lat="46.432248" lon="13.745942"><ele>1634</ele></trkpt>
+      <trkpt lat="46.432188" lon="13.746107"><ele>1637</ele></trkpt>
+      <trkpt lat="46.432149" lon="13.746163"><ele>1639</ele></trkpt>
+      <trkpt lat="46.432105" lon="13.746191"><ele>1639</ele></trkpt>
+      <trkpt lat="46.432023" lon="13.746205"><ele>1638</ele></trkpt>
+      <trkpt lat="46.431974" lon="13.746247"><ele>1639</ele></trkpt>
+      <trkpt lat="46.431839" lon="13.746476"><ele>1645</ele></trkpt>
+      <trkpt lat="46.431814" lon="13.746575"><ele>1648</ele></trkpt>
+      <trkpt lat="46.431781" lon="13.746612"><ele>1649</ele></trkpt>
+      <trkpt lat="46.431692" lon="13.746675"><ele>1648</ele></trkpt>
+      <trkpt lat="46.43167" lon="13.746708"><ele>1649</ele></trkpt>
+      <trkpt lat="46.431599" lon="13.746913"><ele>1654</ele></trkpt>
+      <trkpt lat="46.43155" lon="13.746973"><ele>1655</ele></trkpt>
+      <trkpt lat="46.43146" lon="13.747018"><ele>1655</ele></trkpt>
+      <trkpt lat="46.431371" lon="13.747089"><ele>1655</ele></trkpt>
+      <trkpt lat="46.43131" lon="13.747187"><ele>1658</ele></trkpt>
+      <trkpt lat="46.431274" lon="13.747198"><ele>1659</ele></trkpt>
+      <trkpt lat="46.431134" lon="13.747178"><ele>1657</ele></trkpt>
+      <trkpt lat="46.431066" lon="13.747213"><ele>1657</ele></trkpt>
+      <trkpt lat="46.430965" lon="13.747294"><ele>1658</ele></trkpt>
+      <trkpt lat="46.430904" lon="13.747387"><ele>1660</ele></trkpt>
+      <trkpt lat="46.43078" lon="13.747603"><ele>1663</ele></trkpt>
+      <trkpt lat="46.430721" lon="13.74774"><ele>1664</ele></trkpt>
+      <trkpt lat="46.430672" lon="13.747799"><ele>1664</ele></trkpt>
+      <trkpt lat="46.430601" lon="13.74785"><ele>1664</ele></trkpt>
+      <trkpt lat="46.430509" lon="13.748028"><ele>1669</ele></trkpt>
+      <trkpt lat="46.430466" lon="13.748059"><ele>1670</ele></trkpt>
+      <trkpt lat="46.430429" lon="13.748073"><ele>1670</ele></trkpt>
+      <trkpt lat="46.430379" lon="13.748074"><ele>1670</ele></trkpt>
+      <trkpt lat="46.430358" lon="13.748091"><ele>1670</ele></trkpt>
+      <trkpt lat="46.430362" lon="13.74812"><ele>1671</ele></trkpt>
+      <trkpt lat="46.430396" lon="13.748136"><ele>1672</ele></trkpt>
+      <trkpt lat="46.430693" lon="13.748156"><ele>1675</ele></trkpt>
+      <trkpt lat="46.430763" lon="13.748126"><ele>1675</ele></trkpt>
+      <trkpt lat="46.430882" lon="13.747977"><ele>1674</ele></trkpt>
+      <trkpt lat="46.430965" lon="13.747861"><ele>1674</ele></trkpt>
+      <trkpt lat="46.431004" lon="13.747842"><ele>1675</ele></trkpt>
+      <trkpt lat="46.431072" lon="13.747867"><ele>1677</ele></trkpt>
+      <trkpt lat="46.431141" lon="13.747945"><ele>1680</ele></trkpt>
+      <trkpt lat="46.431201" lon="13.748114"><ele>1683</ele></trkpt>
+      <trkpt lat="46.431308" lon="13.748008"><ele>1684</ele></trkpt>
+      <trkpt lat="46.431539" lon="13.74774"><ele>1686</ele></trkpt>
+      <trkpt lat="46.431616" lon="13.747686"><ele>1689</ele></trkpt>
+      <trkpt lat="46.431866" lon="13.747442"><ele>1689</ele></trkpt>
+      <trkpt lat="46.431932" lon="13.747389"><ele>1690</ele></trkpt>
+      <trkpt lat="46.432097" lon="13.747324"><ele>1690</ele></trkpt>
+      <trkpt lat="46.432167" lon="13.747251"><ele>1691</ele></trkpt>
+      <trkpt lat="46.432227" lon="13.747162"><ele>1691</ele></trkpt>
+      <trkpt lat="46.432343" lon="13.7471"><ele>1688</ele></trkpt>
+      <trkpt lat="46.432403" lon="13.747101"><ele>1688</ele></trkpt>
+      <trkpt lat="46.432475" lon="13.74718"><ele>1689</ele></trkpt>
+      <trkpt lat="46.432336" lon="13.7474"><ele>1691</ele></trkpt>
+      <trkpt lat="46.432322" lon="13.74743"><ele>1692</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

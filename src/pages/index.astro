@@ -156,10 +156,28 @@ const total = initial.length;
 
   function clearLayers() {
     map.closePopup();
-    Object.values(layers).forEach((L0) => map.removeLayer(L0.group));
+    Object.values(layers).forEach((L0) => {
+      map.removeLayer(L0.group);
+      if (L0.dots) map.removeLayer(L0.dots);
+    });
     layers = {};
     all = L.featureGroup();
   }
+
+  // komoot-style waypoint dots (route anchors: trailhead, huts, passes) are
+  // decorative and only drawn from this zoom in — 30+ trails' dots at the
+  // overview zoom would be pure clutter
+  const DOT_ZOOM = 12;
+  function syncDots() {
+    const on = map.getZoom() >= DOT_ZOOM;
+    Object.values(layers).forEach((L0) => {
+      if (!L0.dots) return;
+      const want = on && map.hasLayer(L0.group);
+      if (want && !map.hasLayer(L0.dots)) L0.dots.addTo(map);
+      if (!want && map.hasLayer(L0.dots)) map.removeLayer(L0.dots);
+    });
+  }
+  map.on('zoomend', syncDots);
 
   // one layer-group + marker per trail
   function buildLayers() {
@@ -167,7 +185,8 @@ const total = initial.length;
     trails.forEach((t) => {
       const col = COLORS[t.difficulty];
       const casing = L.polyline(t.path, { color: '#ffffff', weight: 8, opacity: 0.7, lineCap: 'round', lineJoin: 'round' });
-      const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round' });
+      // dashed over the solid white casing — reads as "trail", komoot-style
+      const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', dashArray: '7 11' });
       const icon = L.divIcon({
         className: '',
         html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${MTN}</div>`,
@@ -217,8 +236,41 @@ const total = initial.length;
       wireHold(marker, t);
       wireHold(line, t);
 
-      layers[t.id] = { marker, line, casing, group, trail: t };
+      // numbered waypoint dots at the route anchors, in track order (1 = the
+      // trailhead). Anchors sitting on the peak pin are skipped — the pin is
+      // already there. waypoints come as [lat, lng, ele, kmFromStart].
+      let dots = null;
+      const wps = (t.waypoints || []).filter((p) => haversineKm([p[0], p[1]], t.peak) > 0.12);
+      if (wps.length)
+        dots = L.layerGroup(
+          wps.map((p, i) => {
+            const wp = L.marker([p[0], p[1]], {
+              icon: L.divIcon({
+                className: '',
+                html: `<div class="wp-dot wp-dot--${t.difficulty}">${i + 1}</div>`,
+                iconSize: [18, 18],
+                iconAnchor: [9, 9],
+              }),
+              keyboard: false,
+            });
+            wp.bindTooltip(wpTipHTML(p, i, wps.length), {
+              className: 'wp-tip',
+              direction: 'top',
+              offset: [0, -8],
+              opacity: 1,
+            });
+            // tapping a dot behaves like tapping the line: open the trail popup
+            wp.on('click', () => {
+              wp.closeTooltip();
+              openTrailPopup(t, wp.getLatLng(), -10);
+            });
+            return wp;
+          })
+        );
+
+      layers[t.id] = { marker, line, casing, group, dots, trail: t };
     });
+    syncDots();
     if (all.getLayers().length) {
       all.addLayer(basePin); // frame the base pin together with the trails
       map.fitBounds(all.getBounds().pad(0.12));
@@ -228,6 +280,16 @@ const total = initial.length;
   }
 
   const badgeHTML = (d) => `<span class="badge badge--${d}">${DIFF_LABEL[d]}</span>`;
+
+  // hover card for a numbered waypoint dot — p = [lat, lng, ele, kmFromStart]
+  function wpTipHTML(p, i, total) {
+    const title = i === 0 ? 'Start · trailhead' : `Waypoint ${i + 1} of ${total}`;
+    const facts = [
+      p[3] != null ? `${p[3].toFixed(1)} km from start` : null,
+      p[2] != null ? `${p[2].toLocaleString()} m` : null,
+    ].filter(Boolean);
+    return `<div class="wp-tip-in"><b>${title}</b>${facts.length ? `<span>${facts.join(' · ')}</span>` : ''}</div>`;
+  }
   const tipStat = (k, v, unit) =>
     `<div class="tip-stat"><div class="k">${k}</div><div class="v">${v}${
       unit ? ` <small>${unit}</small>` : ''
@@ -309,11 +371,11 @@ const total = initial.length;
   // ==================== MAP POPUP + HOLD-TO-SCROLL ====================
   // Shared popup for marker/line clicks: the expanded detail card with a wide
   // "More details" button at the bottom that scrolls to the trail card.
-  // Dismiss = tap anywhere on the map (no close button crowding the badge).
+  // Dismiss = the subtle ✕ (tip-head leaves room for it) or tap the map.
   let popupTrailId = null;
   const trailPopup = L.popup({
     className: 'trail-pop',
-    closeButton: false,
+    closeButton: true,
     minWidth: 252,
     maxWidth: 252,
     autoPanPadding: [46, 46],
@@ -436,7 +498,11 @@ const total = initial.length;
     </div>
     <div class="foot">
       <span class="dist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z"/><circle cx="12" cy="10" r="2.4"/></svg>${t.distKm.toFixed(1)} km from ${state.base.name.split(' ')[0]}</span>
-      <button class="seemap" type="button" title="Show on the map" aria-label="Show on the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg>MAP</button>
+      <span class="acts">${
+        t.gpx
+          ? `<a class="gpxdl" href="${t.gpx}" download title="Download GPX route" aria-label="Download GPX route"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14"/></svg>GPX</a>`
+          : ''
+      }<button class="seemap" type="button" title="Show on the map" aria-label="Show on the map"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6"/></svg>MAP</button></span>
     </div>
   </article>`;
   }
@@ -452,6 +518,7 @@ const total = initial.length;
       if (!shown && map.hasLayer(L0.group)) map.removeLayer(L0.group);
       if (shown) setTip(t);
     });
+    syncDots();
     if (popupTrailId && !list.some((x) => x.id === popupTrailId)) map.closePopup();
     grid.innerHTML = list.length
       ? list.map(cardHTML).join('')
@@ -479,6 +546,8 @@ const total = initial.length;
         flyToTrail(id);
         scrollToMap();
       });
+      // GPX link opens the external download — don't also fly the map
+      card.querySelector('.gpxdl')?.addEventListener('click', (e) => e.stopPropagation());
     });
   }
 

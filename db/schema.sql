@@ -36,6 +36,8 @@ CREATE TABLE trails (
   peak_lat   REAL    NOT NULL,           -- where the map pin sits
   peak_lng   REAL    NOT NULL,
   path       TEXT    NOT NULL DEFAULT '[]',  -- JSON [[lat,lng],...] polyline
+  waypoints  TEXT    NOT NULL DEFAULT '[]',  -- JSON [[lat,lng],...] anchor dots along the route
+  gpx        TEXT,                        -- optional: URL where the GPX route can be downloaded
   blurb      TEXT
 );
 

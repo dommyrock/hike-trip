@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="hike-trip" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata>
+    <name>Seceda Ridge Viewpoint</name>
+    <desc>Routed with BRouter (hiking-mountain) over OpenStreetMap data through hand-verified anchor points. Schematic in places — verify against signage on the ground. Track traces one direction — return the same way.</desc>
+    <copyright author="OpenStreetMap contributors"><license>https://www.openstreetmap.org/copyright</license></copyright>
+    <bounds minlat="46.606162" minlon="11.647778" maxlat="46.6089" maxlon="11.651632"/>
+  </metadata>
+  <wpt lat="46.6064" lon="11.6536"><name>Trailhead — Seceda Ridge Viewpoint</name><sym>Trail Head</sym></wpt>
+  <wpt lat="46.6086" lon="11.65"><ele>2519</ele><name>Seceda</name><sym>Summit</sym></wpt>
+  <trk>
+    <name>Seceda Ridge Viewpoint (Ridge loop)</name>
+    <type>hiking</type>
+    <trkseg>
+      <trkpt lat="46.606162" lon="11.650638"><ele>2019</ele></trkpt>
+      <trkpt lat="46.606385" lon="11.650509"><ele>2012</ele></trkpt>
+      <trkpt lat="46.606635" lon="11.650506"><ele>2008</ele></trkpt>
+      <trkpt lat="46.606906" lon="11.650661"><ele>2005</ele></trkpt>
+      <trkpt lat="46.607177" lon="11.650766"><ele>1999</ele></trkpt>
+      <trkpt lat="46.607456" lon="11.650925"><ele>1994</ele></trkpt>
+      <trkpt lat="46.607806" lon="11.651082"><ele>1990</ele></trkpt>
+      <trkpt lat="46.607886" lon="11.651204"><ele>1990</ele></trkpt>
+      <trkpt lat="46.60797" lon="11.651459"><ele>1991</ele></trkpt>
+      <trkpt lat="46.60808" lon="11.651587"><ele>1990</ele></trkpt>
+      <trkpt lat="46.608205" lon="11.651632"><ele>1989</ele></trkpt>
+      <trkpt lat="46.608322" lon="11.651621"><ele>1988</ele></trkpt>
+      <trkpt lat="46.608516" lon="11.651079"><ele>1979</ele></trkpt>
+      <trkpt lat="46.608637" lon="11.650904"><ele>1974</ele></trkpt>
+      <trkpt lat="46.608657" lon="11.650783"><ele>1972</ele></trkpt>
+      <trkpt lat="46.608636" lon="11.650514"><ele>1969</ele></trkpt>
+      <trkpt lat="46.608766" lon="11.650114"><ele>1975</ele></trkpt>
+      <trkpt lat="46.608798" lon="11.650019"><ele>1975</ele></trkpt>
+      <trkpt lat="46.608778" lon="11.649699"><ele>1976</ele></trkpt>
+      <trkpt lat="46.6089" lon="11.64915"><ele>1974</ele></trkpt>
+      <trkpt lat="46.608892" lon="11.648871"><ele>1972</ele></trkpt>
+      <trkpt lat="46.60884" lon="11.64868"><ele>1970</ele></trkpt>
+      <trkpt lat="46.608762" lon="11.647996"><ele>1957</ele></trkpt>
+      <trkpt lat="46.608787" lon="11.647778"><ele>1953</ele></trkpt>
+      <trkpt lat="46.608757" lon="11.647853"><ele>1954</ele></trkpt>
+      <trkpt lat="46.608648" lon="11.647926"><ele>1952</ele></trkpt>
+      <trkpt lat="46.608272" lon="11.648023"><ele>1949</ele></trkpt>
+      <trkpt lat="46.608014" lon="11.648191"><ele>1950</ele></trkpt>
+      <trkpt lat="46.607812" lon="11.648461"><ele>1950</ele></trkpt>
+      <trkpt lat="46.607743" lon="11.648667"><ele>1950</ele></trkpt>
+      <trkpt lat="46.607729" lon="11.648738"><ele>1950</ele></trkpt>
+      <trkpt lat="46.607679" lon="11.648733"><ele>1950</ele></trkpt>
+      <trkpt lat="46.607666" lon="11.648723"><ele>1948</ele></trkpt>
+    </trkseg>
+  </trk>
+</gpx>

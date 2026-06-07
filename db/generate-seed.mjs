@@ -25,7 +25,7 @@ const lines = [
     )
     .join(',\n') + ';',
   '',
-  'INSERT INTO trails (origin_id, slug, name, area, trail_no, difficulty, must_visit, type, season, length_km, ascent_m, duration_h, peak_m, peak_name, massif, access, start_lat, start_lng, peak_lat, peak_lng, path, blurb) VALUES',
+  'INSERT INTO trails (origin_id, slug, name, area, trail_no, difficulty, must_visit, type, season, length_km, ascent_m, duration_h, peak_m, peak_name, massif, access, start_lat, start_lng, peak_lat, peak_lng, path, waypoints, gpx, blurb) VALUES',
 ];
 
 const rows = trails.map((t) => {
@@ -53,6 +53,8 @@ const rows = trails.map((t) => {
     t.peak[0],
     t.peak[1],
     q(JSON.stringify(t.path)),
+    q(JSON.stringify(t.waypoints ?? [])),
+    q(t.gpx),
     q(t.blurb),
   ];
   return `  (${vals.join(', ')})`;

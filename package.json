@@ -9,6 +9,7 @@
     "preview": "astro preview",
     "preview:cf": "astro build && wrangler dev",
     "deploy": "astro build && wrangler deploy",
+    "bake:geo": "node db/bake-geometry.mjs",
     "db:seed:gen": "node db/generate-seed.mjs",
     "db:apply": "wrangler d1 execute hike_trip --local --file db/schema.sql && wrangler d1 execute hike_trip --local --file db/seed.sql",
     "db:apply:remote": "wrangler d1 execute hike_trip --remote --file db/schema.sql && wrangler d1 execute hike_trip --remote --file db/seed.sql",

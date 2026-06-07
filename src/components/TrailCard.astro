@@ -71,8 +71,15 @@ const delay = Math.min(index * 45, 320);
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-6.3-7-11a7 7 0 0 1 14 0c0 4.7-7 11-7 11z" /><circle cx="12" cy="10" r="2.4" /></svg>
       {distKm.toFixed(1)} km from {baseName.split(' ')[0]}
     </span>
-    <button class="seemap" type="button" title="Show on the map" aria-label="Show on the map">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6" /></svg>MAP
-    </button>
+    <span class="acts">
+      {t.gpx && (
+        <a class="gpxdl" href={t.gpx} download title="Download GPX route" aria-label="Download GPX route">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 19h14" /></svg>GPX
+        </a>
+      )}
+      <button class="seemap" type="button" title="Show on the map" aria-label="Show on the map">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V6M6 12l6-6 6 6" /></svg>MAP
+      </button>
+    </span>
   </div>
 </article>

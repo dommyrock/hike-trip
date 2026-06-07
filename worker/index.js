@@ -22,6 +22,8 @@ function toTrail(r) {
     start: [r.start_lat, r.start_lng],
     peak: [r.peak_lat, r.peak_lng],
     path: JSON.parse(r.path),
+    waypoints: JSON.parse(r.waypoints || '[]'),
+    gpx: r.gpx,
     blurb: r.blurb,
   };
 }
@@ -56,7 +58,7 @@ export default {
                 t.length_km, t.ascent_m, t.duration_h,
                 t.peak_m, t.peak_name, t.massif, t.access,
                 t.start_lat, t.start_lng, t.peak_lat, t.peak_lng,
-                t.path, t.blurb
+                t.path, t.waypoints, t.gpx, t.blurb
            FROM trails t
            JOIN origins o ON o.id = t.origin_id
           WHERE o.slug = ?1

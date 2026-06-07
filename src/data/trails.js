@@ -11,6 +11,7 @@
 
 import { trails as ortisei } from './trails-ortisei.js';
 import { trails as kranjskaGora } from './trails-kranjska-gora.js';
+import { baked } from './paths-baked.js';
 
 export const origins = [
   {
@@ -48,7 +49,21 @@ export const origins = [
   },
 ];
 
+// Baked (OSM-routed) geometry overrides the schematic path where available,
+// and brings a self-hosted GPX download with it (npm run bake:geo).
+const enrich = (t, origin) => ({
+  ...t,
+  origin,
+  ...(baked[t.id]
+    ? {
+        path: baked[t.id].path,
+        waypoints: baked[t.id].anchors ?? [], // komoot-style dots along the route
+        gpx: `/gpx/${t.id}.gpx`,
+      }
+    : {}),
+});
+
 export const trails = [
-  ...ortisei.map((t) => ({ ...t, origin: 'ortisei' })),
-  ...kranjskaGora.map((t) => ({ ...t, origin: 'kranjska_gora' })),
+  ...ortisei.map((t) => enrich(t, 'ortisei')),
+  ...kranjskaGora.map((t) => enrich(t, 'kranjska_gora')),
 ];

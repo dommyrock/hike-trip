@@ -11,6 +11,7 @@ Astro static shell + one Leaflet island, deployed as a single Cloudflare Worker
 npm run dev              # Astro dev only — API absent, client falls back to bundled data
 npm run preview:cf       # build + wrangler dev → full stack with LOCAL D1 (:8787)
 npm run deploy           # build + wrangler deploy (needs database_id in wrangler.toml)
+npm run bake:geo         # detailed OSM-routed paths + public/gpx/*.gpx via BRouter (see below)
 npm run db:seed:gen      # regenerate db/seed.sql from src/data/trails.js
 npm run db:apply         # schema + seed → LOCAL D1
 npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops + reseeds)
@@ -32,6 +33,20 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
   `loadOrigin(slug)`: bundled data renders instantly, then the D1 response
   replaces it. SSR/no-JS shows `origins[0]` (Ortisei) only.
 - `db/seed.sql` is generated — never edit by hand.
+- **Baked geometry / GPX** (`npm run bake:geo`, `db/bake-geometry.mjs`): routes each
+  trail's schematic anchor points through BRouter (`hiking-mountain` profile, OSM
+  path graph, public brouter.de — throttled, responses cached in `db/geo-cache/`),
+  then writes a ~7 m-simplified polyline into the **generated**
+  `src/data/paths-baked.js` and a full-resolution GPX (with elevation, ODbL
+  attribution) into `public/gpx/<id>.gpx`. `trails.js` merges baked paths over
+  schematic ones and sets `gpx: '/gpx/<id>.gpx'` — which is what makes the
+  light-blue GPX button render on a card. A length sanity-gate (vs `lengthKm`,
+  half-length allowed for 'Out & back') rejects bad routings: those trails keep
+  the schematic path and get no GPX. Currently rejected: `sassolungo-circuit`,
+  `prisojnik-okno` (router picked wrong variants), `triglav-krma` (BRouter
+  watchdog timeout) — fix by adding more intermediate anchor points to the
+  schematic `path` and re-running `npm run bake:geo <id>`. After any bake:
+  `npm run db:seed:gen && npm run db:apply`.
 - Basemap: standard OSM tiles (user preference: default OSM look, tiles washed ~20%
   via `.leaflet-tile-pane{filter:saturate(.8)}`); Terrain toggle = OpenTopoMap.
 - PWA: `public/manifest.webmanifest` + `public/icons/` + `public/sw.js`
@@ -46,8 +61,10 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
   via-ferrata sections or ≥800 m ascent ⇒ at least `medium`; full via ferrata
   (helmet/harness) ⇒ `hard`.
 - `peakM` = highest point actually reached on the route, NOT the massif summit.
-- `path` polylines are schematic (anchored at real trailhead/hut/summit coords,
-  but not switchback-accurate). Don't navigate by them; see README for GPX import.
+- `path` polylines in `trails-*.js` are schematic (anchored at real
+  trailhead/hut/summit coords) and double as the **via-points for the geometry
+  bake** — at render time most trails use the OSM-routed detailed line from
+  `paths-baked.js` instead. Suspect anchor coords ⇒ suspect baked route.
 - Trails belong to one of two origins: `ortisei` (incl. far-east day trips
   Giau/Falzarego/Tre Cime ~25–70 km away) and `kranjska_gora` (incl. Triglav via
   Krma ~20 km away) — distances shown are straight-line from the chosen base,
