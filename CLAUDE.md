@@ -64,6 +64,17 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
     Langkofelscharte on `sassolungo-circuit`) — either re-scope the trail to a
     routable linear segment, or hand-import a real GPX (komoot/AllTrails export, or
     draw in geojson.io — GeoJSON is [lng,lat]) straight into `path` and bypass BRouter.
+  - **Preferred hand-import (keeps the GPX + waypoint dots)**: instead of dropping the
+    line into `path`, pre-seed the cache `db/geo-cache/<id>.json` with a BRouter-shaped
+    GeoJSON — `{type:'FeatureCollection',features:[{geometry:{type:'LineString',
+    coordinates:[[lon,lat,ele],…]}}]}` — then run `npm run bake:geo <id>` as normal: it
+    simplifies, snaps the `path` anchors to numbered dots, writes the GPX, and runs the
+    length gate just like a routed trail. Source the line from OSM ways (Overpass, graph-
+    route summit↔saddle by shared node ids), and elevations from a DEM (open-meteo
+    `/v1/elevation`); pin sharp-summit vertices to the real `peakM` (DEM undershoots
+    peaks). The cache is git-tracked, so full re-bakes reuse it — do NOT delete it
+    expecting BRouter to re-route a via-ferrata. Working example: `mangart-slovenian-route`
+    (Slovenska smer, grade-B via ferrata — up the west wall, down the Italian route).
   - **Currently rejected (schematic, no GPX)**: `sassolungo-circuit` (Langkofelscharte
     scramble not in the hiking graph), `alpe-di-siusi` (sparse Seiser Alm cart tracks
     → ~12 km vs the 6 km loop); plus Kranjska Gora `prisojnik-okno` (router picked
