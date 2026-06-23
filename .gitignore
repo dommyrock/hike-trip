@@ -4,3 +4,7 @@ dist/
 .DS_Store
 *.log
 .wrangler/
+
+# Local Cloudflare config — holds your own D1 database_id.
+# Copy wrangler.toml.template -> wrangler.toml and fill it in.
+wrangler.toml

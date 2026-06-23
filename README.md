@@ -72,7 +72,7 @@ hike-trip/
 │  └─ seed.sql               # generated — don't edit by hand
 ├─ worker/
 │  └─ index.js               # /api/trails from D1, static assets for the rest
-├─ wrangler.toml             # Workers + assets + D1 bindings
+├─ wrangler.toml.template    # copy -> wrangler.toml (git-ignored), add your D1 id
 ├─ astro.config.mjs
 └─ package.json
 ```
@@ -141,6 +141,7 @@ The site is installable ("Add to Home Screen") and works offline:
 ### Setup (one-time)
 
 ```bash
+cp wrangler.toml.template wrangler.toml   # wrangler.toml is git-ignored
 npx wrangler login                  # connect your Cloudflare account
 npx wrangler d1 create hike_trip    # prints a database_id
 #   -> paste it into wrangler.toml  [[d1_databases]] database_id

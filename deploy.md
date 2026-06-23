@@ -16,6 +16,7 @@ Single Cloudflare **Worker** (not classic Pages): `dist/` served as static asset
 ### 1. Authenticate
 
 ```bash
+cp wrangler.toml.template wrangler.toml   # wrangler.toml is git-ignored; holds your D1 id
 npx wrangler login        # opens browser OAuth
 npx wrangler whoami       # verify
 ```
@@ -34,7 +35,7 @@ Prints a `database_id` (UUID).
 [[d1_databases]]
 binding = "DB"
 database_name = "hike_trip"
-database_id = "<uuid-from-step-2>"   # replaces REPLACE-AFTER-wrangler-d1-create
+database_id = "<uuid-from-step-2>"   # replaces the placeholder from the template
 ```
 
 ### 4. Apply schema + seed to production D1
@@ -128,9 +129,10 @@ activate.
 
 ## Replicating to a new account / fresh clone
 
-Repeat steps 1–6. Note step 2 issues a **new** `database_id` — update
-`wrangler.toml` accordingly (the ID is account-specific; committing it is fine,
-it's not a secret).
+Repeat steps 1–6: start by copying `wrangler.toml.template` → `wrangler.toml`
+(it's git-ignored). Note step 2 issues a **new** `database_id` — paste it into
+your local `wrangler.toml` (the ID is account-specific and not actually a secret,
+but it's kept out of the repo so the public tree carries no account-bound config).
 
 ## Custom domain
 
