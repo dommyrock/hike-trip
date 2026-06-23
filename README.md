@@ -2,6 +2,8 @@
 
 **Live:** <https://hike-trip.dominik-polzer.workers.dev>
 
+<img width="2382" height="1640" alt="image" src="https://github.com/user-attachments/assets/63044bd2-2641-4619-ab25-b76960f3b1fc" />
+
 A clean, fast hiking-trail finder with two base regions: **Ortisei / Val Gardena**
 (Dolomites) and **Kranjska Gora** (Julian Alps · Triglav National Park) — switch
 between them with the region selector above the trail list.
