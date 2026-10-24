@@ -1,15 +1,22 @@
-# Alpine Trails — Val Gardena & Julian Alps
+# Alpine Trails — hiking finder across the Alps
 
 **Live:** <https://hike-trip.dominik-polzer.workers.dev>
 
 <img width="2382" height="1640" alt="image" src="https://github.com/user-attachments/assets/63044bd2-2641-4619-ab25-b76960f3b1fc" />
 
-A clean, fast hiking-trail finder with two base regions: **Ortisei / Val Gardena**
-(Dolomites) and **Kranjska Gora** (Julian Alps · Triglav National Park) — switch
-between them with the region selector above the trail list.
-Trails are drawn on an open-source map, pinned and colour-coded by difficulty
-(🟢 easy · 🟡 medium · 🔴 hard), with a search/filter bar and a card per trail
-showing distance from your base, peak height, length, ascent and walking time.
+A clean, fast hiking-trail finder across five regions — the **Dolomites** (base
+Ortisei / Val Gardena), the **Julian Alps** (Kranjska Gora · Triglav National
+Park), **Austria**, **Switzerland** and **Germany** — all on one map. Region chips
+filter the map and the cards together. Trails are dots colour-coded by difficulty
+(🟢 easy · 🟡 medium · 🔴 hard, a magenta ring for must-visits), and every trail gets
+a photo card with distance from your base, high point, length, ascent and time,
+plus a "More details" panel with the full description and facts.
+
+Two pages, two tabs in the header:
+
+- **Trail finder** (`/`) — the map, the filter bar and the trail cards.
+- **Explore the Alps** (`/explore/`) — the curated, most talked-about trails as
+  postcards grouped by region; each opens on the finder map (`/?trail=<id>`).
 
 Built with **[Astro](https://astro.build)** — a static, zero-framework shell that
 renders instantly, plus a single client-side **[Leaflet](https://leafletjs.com)**
@@ -35,12 +42,21 @@ npm run preview  # preview the production build locally
 
 ## How it works
 
-- The page itself is **static HTML** — the header, controls and an initial set of
+- The page itself is **static HTML** — the header, controls and the first page of
   trail cards are server-rendered for fast first paint and so it works without JS.
 - On load, a single bundled `<script>` boots Leaflet, draws every trail (a coloured
-  polyline + a mountain pin at the high point), and **takes over** the cards so that
-  searching, filtering, sorting and changing your base update the map and the list
-  together.
+  polyline where there is route geometry + a dot at the high point), and **takes
+  over** the cards so that searching, filtering, sorting and changing your base
+  update the map and the list together. Filtered-out trails stay on the map as
+  dimmed dots; the cards page in 24 at a time ("Show more").
+- Filter bar: row 1 = region chips · difficulty · search; row 2 = From base ·
+  Within slider · trip length · must visit · sort. Picking a region flies the map
+  there and measures distances from its home town.
+- **Phones** get their own components: below 640px the difficulty group and row 2
+  move into a **filter bottom sheet** (`BottomSheet.astro` + `src/lib/mobile.js` —
+  the same elements, moved, not copied), tapping a dot opens the trail in a
+  **trail sheet** instead of a map popup, and the Explore regions become
+  swipeable carousels.
 - The basemap is **standard OpenStreetMap** (the default OSM style, untouched);
   a **Terrain** toggle switches to **OpenTopoMap** for contour/hiking detail.
   No API keys needed.
@@ -49,25 +65,40 @@ npm run preview  # preview the production build locally
 
 ```
 hike-trip/
+├─ data/
+│  ├─ explore/<region>.csv   # ← research data for the Explore set (README inside)
+│  └─ photos.csv             # photo credits for the app's own trails
 ├─ public/
 │  ├─ favicon.svg
+│  ├─ photos/<id>.webp       # one 720×480 Wikimedia Commons photo per trail
 │  └─ gpx/                   # generated — downloadable per-trail GPX tracks
 ├─ src/
 │  ├─ components/
-│  │  └─ TrailCard.astro     # one trail card (server-rendered first paint)
+│  │  ├─ SiteHeader.astro    # header + the two tabs (both pages)
+│  │  ├─ FilterBar.astro     # trail-finder filter bar (two rows)
+│  │  ├─ BottomSheet.astro   # phone bottom sheet (filters, trail details)
+│  │  ├─ TrailCard.astro     # one trail card (server-rendered first paint)
+│  │  └─ Postcard.astro      # one Explore postcard
 │  ├─ data/
-│  │  ├─ trails.js           # ← the trail dataset (build-time snapshot + seed source)
+│  │  ├─ trails.js           # ← origins registry + all trails merged (seed source)
+│  │  ├─ trails-<origin>.js  # hand-curated trails per origin
+│  │  ├─ trails-explore.js   # generated from data/explore/*.csv + data/photos.csv
 │  │  └─ paths-baked.js      # generated — detailed OSM-routed polylines + waypoints
 │  ├─ layouts/
 │  │  └─ Base.astro          # <head>, fonts, global CSS
 │  ├─ lib/
-│  │  └─ geo.js              # haversine distance, bases, formatting helpers
+│  │  ├─ card.js             # card, map tooltip and popup markup (SSR + client)
+│  │  ├─ mobile.js           # phone sheet controller + control relocation
+│  │  └─ geo.js              # haversine distance, formatting helpers
 │  ├─ pages/
-│  │  └─ index.astro         # the page + the Leaflet client island
+│  │  ├─ index.astro         # trail finder + the Leaflet client island
+│  │  └─ explore.astro       # Explore the Alps
 │  └─ styles/
-│     └─ global.css          # the whole glass / light-grey design system
+│     ├─ global.css          # the whole glass / light-grey design system
+│     └─ explore.css         # Explore postcards
 ├─ db/
 │  ├─ schema.sql             # D1 (SQLite): origins ──< trails
+│  ├─ generate-explore.mjs   # data/explore/*.csv -> src/data/trails-explore.js
 │  ├─ generate-seed.mjs      # trails.js -> seed.sql
 │  ├─ bake-geometry.mjs      # BRouter bake: paths-baked.js + public/gpx/*.gpx
 │  ├─ geo-cache/             # cached BRouter responses (re-runs are offline)
@@ -105,11 +136,15 @@ Astro site is served from Cloudflare's edge cache (free, unmetered), and only
   OpenStreetMap · OpenTopoMap   (third-party tile CDNs, no key)
 ```
 
-- **`origins`** (1) ──< (n) **`trails`**: one row per base location (`ortisei`),
-  trails reference it by `origin_id`. Add a new area = 1 origin row + its trails.
-- The client island calls `/api/trails?origin=ortisei`; if the API is missing
-  (plain `astro dev`, offline) it falls back to the build-time snapshot in
-  `src/data/trails.js`, so the site never breaks.
+- **`origins`** (1) ──< (n) **`trails`**: one row per region (`ortisei`,
+  `kranjska_gora`, `austria`, `switzerland`, `germany`), trails reference it by
+  `origin_id`. Add a new area = 1 origin row + its trails.
+- The client island calls `/api/trails?origin=all` (every region at once;
+  `?origin=<slug>` still returns one); if the API is missing (plain `astro dev`,
+  offline) it falls back to the build-time snapshot in `src/data/trails.js`, so
+  the site never breaks.
+- The seed is one `INSERT` per trail — a single multi-row statement outgrew D1's
+  statement size limit (`SQLITE_TOOBIG`) once the Explore set was in.
 - Free-tier math: static requests are unmetered; the Worker only runs on `/api/*`
   (100k req/day free); D1 free tier is 5M row reads/day — this app reads ~10
   rows per visit.
@@ -129,7 +164,8 @@ The site is installable ("Add to Home Screen") and works offline:
   make it installable; `Base.astro` links them and registers the service worker.
 - `public/sw.js` caches the app shell and the last `/api/trails` response
   (network-first, so you always get fresh data online), hashed bundles and fonts
-  (cache-first, immutable), and up to ~400 map tiles you've already viewed.
+  (cache-first, immutable), up to ~400 map tiles you've already viewed, and up to
+  200 trail photos (cache-first — a changed photo gets a new file name).
 - Offline you get: the full trail list, cards and stats, plus whatever map areas
   you browsed while online. Fresh tiles need a connection.
 - To regenerate icons after editing `public/icons/icon.svg` (macOS):
@@ -158,8 +194,14 @@ npm run dev              # plain Astro dev (uses the static fallback data)
 npm run preview:cf       # build + wrangler dev → full stack w/ LOCAL D1 (:8787)
 npm run deploy           # build + deploy Worker + assets to Cloudflare
 npm run bake:geo         # OSM-routed paths + public/gpx/*.gpx (see below)
+npm run explore:gen      # regenerate trails-explore.js after editing data/*.csv
 npm run db:seed:gen      # regenerate db/seed.sql after editing trails.js
 ```
+
+> **Deploying a schema change** (new `trails` columns, as in the Explore release):
+> run `npm run db:apply:remote` *before* `npm run deploy`. Until the remote D1 has
+> the new columns, the new Worker's `/api/trails` errors and the client quietly
+> keeps the bundled data — the site still works, but D1 edits won't show.
 
 To edit data in production directly (no redeploy needed):
 
@@ -172,7 +214,13 @@ npx wrangler d1 execute hike_trip --remote \
 
 ## Add a trail
 
-Append an object to the `trails` array in **`src/data/trails.js`**:
+**To the Explore set** (and so to the finder): add a row to the region's
+`data/explore/<region>.csv` (columns and conventions in `data/explore/README.md`)
+and a 720×480 photo at `public/photos/<id>.webp`, then
+`npm run explore:gen && npm run db:seed:gen && npm run db:apply`.
+
+**To an origin's hand-curated set**: append an object to the `trails` array in
+**`src/data/trails-<origin>.js`** (and its photo credit to `data/photos.csv`):
 
 ```js
 {

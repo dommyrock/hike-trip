@@ -38,7 +38,18 @@ CREATE TABLE trails (
   path       TEXT    NOT NULL DEFAULT '[]',  -- JSON [[lat,lng],...] polyline
   waypoints  TEXT    NOT NULL DEFAULT '[]',  -- JSON [[lat,lng],...] anchor dots along the route
   gpx        TEXT,                        -- optional: URL where the GPX route can be downloaded
-  blurb      TEXT
+  blurb      TEXT,
+  -- "Explore the Alps" fields (data/explore/*.csv via trails-explore.js); NULL on most app trails
+  days          TEXT,                     -- multi-day routes only: '8–12', '33 stages'
+  descent_m     INTEGER,                  -- only where it differs a lot from the ascent
+  region_name   TEXT,                     -- 'Bernese Oberland' (falls back to the origin's label)
+  country       TEXT,
+  access_note   TEXT,                     -- 2025–26 fee / closure / booking note
+  buzz          TEXT,                     -- 'low' | 'medium' | 'high' | 'very-high' (editorial)
+  why           TEXT,                     -- why it trends
+  explore_group TEXT,                     -- 'dolomites' | 'austria' | ... = shown on /explore
+  photo         TEXT,                     -- JSON {src, credit, license, source}
+  description   TEXT                      -- full paragraph when blurb is a short teaser
 );
 
 CREATE INDEX idx_trails_origin ON trails(origin_id);

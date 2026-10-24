@@ -1,0 +1,30 @@
+---
+// The glass pill header shared by both pages: brand, the two section tabs and
+// a page-specific meta slot (hidden on phones).
+interface Props {
+  active: 'finder' | 'explore';
+  subtitle: string;
+  // the trail finder's brand is its page heading; /explore has its own h1
+  brandIsHeading?: boolean;
+}
+
+const { active, subtitle, brandIsHeading = false } = Astro.props;
+const Title = brandIsHeading ? 'h1' : 'p';
+---
+
+<header class="top">
+  <a class="brand" href="/" aria-label="Alpine Trails — trail finder">
+    <div class="mk">
+      <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z"></path><path d="M11.5 12.2 14.5 7"></path></svg>
+    </div>
+    <div>
+      <Title class="brand-name" id="title">Alpine Trails</Title>
+      <p id="subtitle">{subtitle}</p>
+    </div>
+  </a>
+  <nav class="tabs" aria-label="Sections">
+    <a href="/" aria-current={active === 'finder' ? 'page' : undefined}>Trail finder</a>
+    <a href="/explore/" aria-current={active === 'explore' ? 'page' : undefined}>Explore the Alps</a>
+  </nav>
+  <div class="meta"><slot name="meta" /></div>
+</header>

@@ -6,6 +6,8 @@
  *   /gpx/*        network-first — un-hashed files that change on re-bake; a
  *                 previously fetched track stays available offline
  *   /_astro/*     cache-first (content-hashed, immutable)
+ *   /photos/*     cache-first, capped — trail photos never change in place (a new
+ *                 photo gets a new file name), so the cards keep theirs offline
  *   map tiles     cache-first, capped — offline you keep the areas you browsed
  *   fonts         cache-first (immutable woff2 from gstatic)
  *
@@ -13,12 +15,14 @@
  * (The app shell itself updates without a bump: HTML is network-first and new
  * builds reference new hashed asset URLs.)
  */
-const VERSION = 'v2'; // v2: /gpx/ network-first (was falling into cache-first shell)
+const VERSION = 'v3'; // v3: /photos/ cache-first in its own capped cache
 const SHELL = `shell-${VERSION}`;   // '/', manifest, icons
 const ASSETS = `assets-${VERSION}`; // hashed bundles + fonts
 const DATA = `data-${VERSION}`;     // /api/trails responses
 const TILES = `tiles-${VERSION}`;   // basemap tiles (capped)
+const PHOTOS = `photos-${VERSION}`; // trail photos (capped)
 const TILE_LIMIT = 400;
+const PHOTO_LIMIT = 200;
 
 const PRECACHE = ['/', '/manifest.webmanifest', '/favicon.svg', '/icons/icon-192.png'];
 
@@ -29,7 +33,7 @@ self.addEventListener('install', (event) => {
 });
 
 self.addEventListener('activate', (event) => {
-  const keep = new Set([SHELL, ASSETS, DATA, TILES]);
+  const keep = new Set([SHELL, ASSETS, DATA, TILES, PHOTOS]);
   event.waitUntil(
     caches
       .keys()
@@ -85,6 +89,8 @@ self.addEventListener('fetch', (event) => {
       event.respondWith(networkFirst(request, DATA));
     } else if (url.pathname.startsWith('/_astro/')) {
       event.respondWith(cacheFirst(request, ASSETS));
+    } else if (url.pathname.startsWith('/photos/')) {
+      event.respondWith(cacheFirst(request, PHOTOS, PHOTO_LIMIT));
     } else {
       event.respondWith(cacheFirst(request, SHELL)); // icons, favicon, manifest
     }

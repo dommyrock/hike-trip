@@ -1,0 +1,199 @@
+---
+import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import Postcard from '../components/Postcard.astro';
+import { trails } from '../data/trails.js';
+import { BUZZ_RANK } from '../lib/card.js';
+import { DIFF_LABEL } from '../lib/geo.js';
+import '../styles/explore.css';
+
+// The curated "Explore the Alps" set: every trail tagged with an explore
+// group (data/explore/*.csv), most talked-about first.
+const GROUPS = [
+  { id: 'dolomites', title: 'Dolomites', sub: 'Italy' },
+  { id: 'austria', title: 'Austria', sub: 'Tyrol · Salzburg · Salzkammergut · Vorarlberg' },
+  { id: 'switzerland', title: 'Switzerland', sub: 'Bernese Oberland · Valais · Central · Ticino' },
+  { id: 'germany', title: 'Germany', sub: 'Bavarian Alps · Allgäu · Berchtesgaden' },
+];
+const FIRST = 4; // cards per region before "See all" (desktop); the script reads it from #ex-bar
+
+const explore = trails
+  .filter((t) => t.exploreGroup)
+  .sort((a, b) => (BUZZ_RANK[b.buzz] ?? 0) - (BUZZ_RANK[a.buzz] ?? 0) || b.mustVisit - a.mustVisit);
+const sections = GROUPS.map((g) => ({ ...g, trails: explore.filter((t) => t.exploreGroup === g.id) }));
+const mustCount = explore.filter((t) => t.mustVisit).length;
+const multiCount = explore.filter((t) => t.type === 'Multi-day').length;
+---
+
+<Base
+  title="Explore the Alps — Alpine Trails"
+  description="The Alps' most-loved hikes in the Dolomites, Austria, Switzerland and Germany — photos, route figures and what changed for 2025–26."
+>
+  <div class="wrap">
+    <SiteHeader active="explore" subtitle="Explore the Alps · 4 regions">
+      <span slot="meta"><b>{explore.length}</b> trails · most talked-about first</span>
+    </SiteHeader>
+
+    <section class="ex-hero">
+      <div class="ex-intro">
+        <p class="ex-kicker">Dolomites · Austria · Switzerland · Germany</p>
+        <h1>Postcards from the Alps</h1>
+        <p class="ex-lede">
+          The hikes everyone shares, grouped by region. Open one to see it on the trail-finder map, with every
+          trailhead checked against OpenStreetMap.
+        </p>
+      </div>
+      <dl class="ex-stats">
+        <div><dt>trails</dt><dd>{explore.length}</dd></div>
+        <div><dt>must visit</dt><dd>{mustCount}</dd></div>
+        <div><dt>multi-day</dt><dd>{multiCount}</dd></div>
+      </dl>
+    </section>
+
+    <div class="fbar fbar--explore" id="ex-bar" data-first={FIRST}>
+      <div class="fb-row">
+        <div class="fb-regions" role="group" aria-label="Region">
+          <button type="button" class="seg on" data-group="all" aria-pressed="true">All</button>
+          {
+            GROUPS.map((g) => (
+              <button type="button" class="seg" data-group={g.id} aria-pressed="false">
+                {g.title}
+              </button>
+            ))
+          }
+        </div>
+        <div class="fb-diff ex-diff" role="group" aria-label="Difficulty">
+          {
+            ['easy', 'medium', 'hard'].map((d) => (
+              <button type="button" class="seg" data-d={d} aria-pressed="false">
+                <i class={`dot dot--${d}`} />
+                {DIFF_LABEL[d]}
+              </button>
+            ))
+          }
+          <button type="button" class="seg seg--plain" id="ex-multi" aria-pressed="false">Multi-day only</button>
+        </div>
+        <div class="fb-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+          <input id="ex-q" type="search" placeholder="Search…" autocomplete="off" aria-label="Search the explore trails" />
+        </div>
+      </div>
+    </div>
+
+    <div class="empty ex-empty" id="ex-empty" hidden>No trails match. Try clearing a filter.</div>
+
+    {
+      sections.map((s) => (
+        <section class="pc-section" data-group={s.id} aria-labelledby={`sec-${s.id}`}>
+          <div class="pc-head">
+            <h2 id={`sec-${s.id}`}>{s.title}</h2>
+            <span class="pc-sub">
+              <b class="pc-count">{s.trails.length}</b> trails · {s.sub}
+            </span>
+            <span class="pc-rule" aria-hidden="true" />
+            <button type="button" class="pc-toggle" aria-expanded="false" hidden={s.trails.length <= FIRST}>
+              See all {s.trails.length}
+            </button>
+          </div>
+          <div class="pc-grid">
+            {s.trails.map((t) => (
+              <Postcard trail={t} />
+            ))}
+          </div>
+        </section>
+      ))
+    }
+
+    <p class="fineprint">
+      Map data © OpenStreetMap contributors. Photos from Wikimedia Commons under their stated licences. Route
+      figures from official tourism sites and route portals; buzz levels are editorial.
+    </p>
+  </div>
+</Base>
+
+<script>
+  import { PHONE } from '../lib/mobile.js';
+
+  const FIRST = +document.getElementById('ex-bar').dataset.first;
+  const state = { group: 'all', diffs: new Set(), multi: false, q: '', open: new Set() };
+
+  const cards = [...document.querySelectorAll('.pc')];
+  const sections = [...document.querySelectorAll('.pc-section')];
+  const empty = document.getElementById('ex-empty');
+
+  const press = (btn, on) => {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', String(on));
+  };
+
+  const matches = (c) => {
+    const q = state.q.trim().toLowerCase();
+    if (state.group !== 'all' && c.dataset.group !== state.group) return false;
+    if (state.diffs.size && !state.diffs.has(c.dataset.d)) return false;
+    if (state.multi && c.dataset.multi !== '1') return false;
+    if (q && !c.dataset.search.includes(q)) return false;
+    return true;
+  };
+
+  // Desktop shows the first FIRST matches per region until "See all"; a
+  // region filter or a search shows everything, and so do the phone
+  // carousels (swiping is the "see all" there).
+  function apply() {
+    let total = 0;
+    const showAll = PHONE.matches || state.group !== 'all' || state.q.trim() !== '';
+    sections.forEach((sec) => {
+      const g = sec.dataset.group;
+      const hit = cards.filter((c) => c.dataset.group === g && matches(c));
+      const open = showAll || state.open.has(g);
+      cards
+        .filter((c) => c.dataset.group === g)
+        .forEach((c) => (c.hidden = !hit.includes(c) || (!open && hit.indexOf(c) >= FIRST)));
+      sec.hidden = hit.length === 0;
+      sec.querySelector('.pc-count').textContent = hit.length;
+      const toggle = sec.querySelector('.pc-toggle');
+      toggle.hidden = showAll || hit.length <= FIRST;
+      toggle.textContent = state.open.has(g) ? 'Show fewer' : `See all ${hit.length}`;
+      toggle.setAttribute('aria-expanded', String(state.open.has(g)));
+      total += hit.length;
+    });
+    empty.hidden = total > 0;
+  }
+
+  document.querySelectorAll('#ex-bar [data-group]').forEach((b) =>
+    b.addEventListener('click', () => {
+      state.group = b.dataset.group;
+      document.querySelectorAll('#ex-bar [data-group]').forEach((x) => press(x, x === b));
+      apply();
+    })
+  );
+  document.querySelectorAll('#ex-bar [data-d]').forEach((b) =>
+    b.addEventListener('click', () => {
+      const d = b.dataset.d;
+      const on = !state.diffs.has(d);
+      if (on) state.diffs.add(d);
+      else state.diffs.delete(d);
+      press(b, on);
+      apply();
+    })
+  );
+  const multiBtn = document.getElementById('ex-multi');
+  multiBtn.addEventListener('click', () => {
+    state.multi = !state.multi;
+    press(multiBtn, state.multi);
+    apply();
+  });
+  document.getElementById('ex-q').addEventListener('input', (e) => {
+    state.q = e.target.value;
+    apply();
+  });
+  sections.forEach((sec) =>
+    sec.querySelector('.pc-toggle').addEventListener('click', () => {
+      const g = sec.dataset.group;
+      if (state.open.has(g)) state.open.delete(g);
+      else state.open.add(g);
+      apply();
+    })
+  );
+  PHONE.addEventListener('change', apply);
+  apply();
+</script>

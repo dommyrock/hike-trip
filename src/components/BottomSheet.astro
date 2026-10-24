@@ -1,0 +1,30 @@
+---
+// Phone bottom sheet (dialog). Hidden until src/lib/mobile.js `sheet(el)` opens
+// it; desktop layouts never open one. Content goes in the default slot (or is
+// filled at runtime into .sheet-body), actions in the `foot` slot.
+interface Props {
+  id: string;
+  title: string;
+  // visually hide the title row text (still the dialog's accessible name)
+  quietTitle?: boolean;
+}
+
+const { id, title, quietTitle = false } = Astro.props;
+---
+
+<div class="sheet" id={id} role="dialog" aria-modal="true" aria-labelledby={`${id}-title`} hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel">
+    <div class="sheet-grip">
+      <span class="sheet-handle" aria-hidden="true"></span>
+      <div class="sheet-head">
+        <h2 id={`${id}-title`} class:list={[{ 'sr-only': quietTitle }]}>{title}</h2>
+        <button type="button" class="sheet-x" data-close aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"></path></svg>
+        </button>
+      </div>
+    </div>
+    <div class="sheet-body"><slot /></div>
+    <slot name="foot" />
+  </div>
+</div>

@@ -1,115 +1,98 @@
 ---
 import Base from '../layouts/Base.astro';
+import SiteHeader from '../components/SiteHeader.astro';
+import FilterBar from '../components/FilterBar.astro';
+import BottomSheet from '../components/BottomSheet.astro';
 import TrailCard from '../components/TrailCard.astro';
 import { trails, origins } from '../data/trails.js';
 import { haversineKm } from '../lib/geo.js';
 
-// First paint / no-JS: the default origin's trails, distances from its base
-// town, nearest trailhead first. Other origins load client-side via the switcher.
+// First paint / no-JS: every region, nearest to the default base first — the
+// first page of cards only; the client pages the rest in (PAGE in the script).
+const PAGE = 24;
 const home = origins[0];
 const initial = trails
-  .filter((t) => t.origin === home.slug)
   .map((t) => ({ ...t, distKm: haversineKm(home.coords, t.start) }))
-  .sort((a, b) => a.distKm - b.distKm);
+  .sort((a, b) => a.distKm - b.distKm)
+  .slice(0, PAGE);
 
-const total = initial.length;
+const total = trails.length;
+const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) => t.origin === o.slug).length]));
 ---
 
-<Base>
+<Base
+  title="Alpine Trails — hiking finder"
+  description="A clean, fast hiking-trail finder across the Alps — Dolomites, Julian Alps, Austria, Switzerland and Germany — mapped by difficulty, with photos, distance, high point and route detail."
+>
   <div class="wrap">
-    <header class="top">
-      <div class="brand">
-        <div class="mk">
-          <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 20h18L14.5 7l-3 5.2L9 8.4 3 20Z" /><path d="M11.5 12.2 14.5 7" /></svg>
-        </div>
-        <div>
-          <h1 id="title">{home.title}</h1>
-          <p id="subtitle">Hiking finder · base: {home.name}</p>
-        </div>
-      </div>
-      <div class="meta">
-        <span><b id="m-count">{total}</b> trails</span>
-        <span id="m-region">{home.region}</span>
-      </div>
-    </header>
+    <SiteHeader active="finder" subtitle={`Hiking finder · base: ${home.name}`} brandIsHeading>
+      <span slot="meta"><b id="m-count">{total}</b> trails · <span id="m-region">All regions</span></span>
+    </SiteHeader>
 
     <div class="mapwrap">
       <div id="map"></div>
       <div class="map-ctrl layers">
-        <button id="lyr-light" class="on">Standard</button>
-        <button id="lyr-terrain">Terrain</button>
+        <button id="lyr-light" class="on" type="button">Standard</button>
+        <button id="lyr-terrain" type="button">Terrain</button>
       </div>
-      <div class="legend">
-        <span class="easy"><i></i>Easy</span>
-        <span class="medium"><i></i>Medium</span>
-        <span class="hard"><i></i>Hard</span>
-        <span class="mustv"><i></i>Must visit</span>
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot dot--easy"></i>Easy</span>
+        <span><i class="dot dot--medium"></i>Medium</span>
+        <span><i class="dot dot--hard"></i>Hard</span>
+        <span><i class="dot dot--legend-must"></i>Must visit</span>
       </div>
-      <button class="recenter" id="recenter" title="Frame all trails">
-        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /><circle cx="12" cy="12" r="4.5" /></svg>
+      <button class="recenter" id="recenter" type="button" title="Frame the trails shown" aria-label="Frame the trails shown">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M12 3v3M12 18v3M3 12h3M18 12h3"></path><circle cx="12" cy="12" r="4.5"></circle></svg>
       </button>
     </div>
 
-    <div class="controls">
-      <div class="field region" title="Trail region — switches the whole dataset">
-        <select id="origin">
-          {origins.map((o) => <option value={o.slug}>{o.region}</option>)}
-        </select>
-      </div>
-      <div class="field search">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.2-3.2" /></svg>
-        <input id="q" type="text" placeholder="Search trails, peaks, areas…" autocomplete="off" />
-      </div>
-      <div class="field from">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z" /><circle cx="12" cy="10" r="2.5" /></svg>
-        <input id="from" type="text" list="bases" value={home.name} autocomplete="off" title="Distances are measured from here" />
-        <datalist id="bases"></datalist>
-      </div>
-      <div class="field within">
-        <span class="lbl">Within</span>
-        <input id="dist" type="range" min="2" max="25" step="1" value="25" title="Max distance from base" />
-        <span class="val" id="distVal">Any</span>
-      </div>
-      <div class="field diff-seg" role="group" aria-label="Filter by difficulty">
-        <span class="lbl">Difficulty</span>
-        <button type="button" class="tgl tgl--easy" data-d="easy" title="Easy" aria-pressed="false"></button>
-        <button type="button" class="tgl tgl--medium" data-d="medium" title="Medium" aria-pressed="false"></button>
-        <button type="button" class="tgl tgl--hard" data-d="hard" title="Hard" aria-pressed="false"></button>
-      </div>
-      <div class="sort">
-        <label for="sort">Sort</label>
-        <select id="sort">
-          <option value="dist">Nearest</option>
-          <option value="diff">Easiest first</option>
-          <option value="peak">Highest peak</option>
-        </select>
-      </div>
-    </div>
+    <FilterBar origins={origins} counts={counts} total={total} home={home} />
 
     <div class="count" id="count">
-      <b>{initial.length}</b> of {total} trails · distances from <b>{home.name}</b> (straight-line to trailhead)
+      <b>{total}</b> of {total} trails · distances from <b>{home.name}</b> (straight-line to trailhead)
     </div>
 
-    <div class="grid" id="grid">
+    <div class="grid" id="grid" data-page={PAGE}>
       {initial.map((t, i) => <TrailCard trail={t} distKm={t.distKm} baseName={home.name} index={i} />)}
     </div>
+    <div class="more-wrap">
+      <button class="more-btn" id="more" type="button" hidden={total <= PAGE}>Show {Math.min(PAGE, total - PAGE)} more</button>
+    </div>
+
+    <p class="fineprint">
+      Map data © OpenStreetMap contributors. Photos from Wikimedia Commons under their stated licences, credited on each card.
+    </p>
   </div>
+
+  <BottomSheet id="filter-sheet" title="Filters">
+    <div id="fs-slot" class="fs-slot"></div>
+    <div slot="foot" class="sheet-foot">
+      <button type="button" class="sheet-reset" id="fs-reset">Reset</button>
+      <button type="button" class="sheet-cta" data-close>Show <b id="fs-count">{total}</b> trails</button>
+    </div>
+  </BottomSheet>
+  <BottomSheet id="trail-sheet" title="Trail details" quietTitle />
 </Base>
 
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
-  import { trails as staticTrails, origins } from '../data/trails.js';
+  import { trails as staticTrails, origins, decorate } from '../data/trails.js';
   import { haversineKm, DIFF_RANK } from '../lib/geo.js';
   import { ICON } from '../lib/icons.js';
-  import { cardHTML, badgeHTML, statsRow } from '../lib/card.js';
+  import { cardHTML, tipHTML, popupHTML, BUZZ_RANK, esc } from '../lib/card.js';
+  import { PHONE, sheet, relocate } from '../lib/mobile.js';
+
+  const PAGE = +document.getElementById('grid').dataset.page; // cards per "Show more" step (set in the frontmatter)
+  const ANY_DIST = 25; // the Within slider's top stop == no distance limit
 
   // medium uses the matte pure yellow on the map (--medium-map in global.css);
   // badges/cards elsewhere keep the amber --medium
   const COLORS = { easy: '#34a06a', medium: '#d8ac1c', hard: '#d24e48' };
   // emphasized (hovered / popup-open) trail recolours to deep navy so it stands
-  // out from the difficulty-coloured lines around it
+  // out from the difficulty-coloured lines around it (--selected in global.css)
   const SELECTED = '#13306e';
+  const originBySlug = Object.fromEntries(origins.map((o) => [o.slug, o]));
 
   // ============================ MAP ============================
   const map = L.map('map', { zoomControl: true, attributionControl: true });
@@ -118,8 +101,7 @@ const total = initial.length;
   // Standard OpenStreetMap basemap — the default OSM look, untouched.
   const light = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
-    attribution:
-      '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap</a> contributors',
   });
   const terrain = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
     subdomains: 'abc',
@@ -141,16 +123,14 @@ const total = initial.length;
     iconAnchor: [17, 30], // teardrop tip
     tooltipAnchor: [0, -30],
   });
-  const basePin = L.marker(origins[0].coords, { icon: pinIcon })
+  const basePin = L.marker(origins[0].coords, { icon: pinIcon, zIndexOffset: 500 })
     .addTo(map)
     .bindTooltip(origins[0].name, { direction: 'top' });
 
-  // Trail data + map layers are rebuilt whenever the origin (region) changes —
-  // see loadOrigin() at the bottom, which owns fetching D1 data via the Worker
-  // with the bundled dataset as fallback.
+  // Trail map layers are built once per dataset (bundled, then D1 — see
+  // loadData() at the bottom) and only shown/dimmed by render().
   let trails = [];
-  let layers = {}; // id -> {marker, line, casing, group, trail}
-  let all = L.featureGroup();
+  let layers = {}; // id -> {marker, line, casing, lines, dots, trail, shown}
   // the trail the user last clicked — stays navy-highlighted until another is
   // clicked, even after its popup closes (lets you compare lines popup-free)
   let selectedTrailId = null;
@@ -158,89 +138,97 @@ const total = initial.length;
   function clearLayers() {
     map.closePopup();
     Object.values(layers).forEach((L0) => {
-      map.removeLayer(L0.group);
+      map.removeLayer(L0.marker);
+      map.removeLayer(L0.lines);
       if (L0.dots) map.removeLayer(L0.dots);
     });
     layers = {};
-    all = L.featureGroup();
-    selectedTrailId = null; // layers are gone (origin switch / rebuild) — drop selection
+    selectedTrailId = null; // layers are gone (dataset rebuild) — drop selection
   }
 
   // komoot-style waypoint dots (route anchors: trailhead, huts, passes) are
-  // decorative and only drawn from this zoom in — 30+ trails' dots at the
+  // decorative and only drawn from this zoom in — every trail's dots at the
   // overview zoom would be pure clutter
   const DOT_ZOOM = 12;
   function syncDots() {
     const on = map.getZoom() >= DOT_ZOOM;
     Object.values(layers).forEach((L0) => {
       if (!L0.dots) return;
-      const want = on && map.hasLayer(L0.group);
+      const want = on && L0.shown;
       if (want && !map.hasLayer(L0.dots)) L0.dots.addTo(map);
       if (!want && map.hasLayer(L0.dots)) map.removeLayer(L0.dots);
     });
   }
   map.on('zoomend', syncDots);
 
-  // one layer-group + marker per trail
+  // Design C map dot: difficulty fill, white rim, magenta ring for must-visits.
+  // The 28px icon box is the tap target; the visible dot sits in its centre.
+  const dotIcon = (t) =>
+    L.divIcon({
+      className: 'dot-wrap',
+      html: `<span class="dot dot--${t.difficulty}${t.mustVisit ? ' dot--must' : ''}"></span>`,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    });
+
+  // one marker (+ route line when the trail has geometry) per trail
   function buildLayers() {
     clearLayers();
     trails.forEach((t) => {
       const col = COLORS[t.difficulty];
-      const casing = L.polyline(t.path, { color: '#ffffff', weight: 8, opacity: 0.7, lineCap: 'round', lineJoin: 'round' });
-      // dashed over the solid white casing — reads as "trail", komoot-style
-      const line = L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', dashArray: '7 11' });
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="mk-pin mk-pin--${t.difficulty}${t.mustVisit ? ' mk-pin--must' : ''}">${ICON.mountain}</div>`,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-      });
-      const marker = L.marker(t.peak, { icon, riseOnHover: true });
-
-      // hover tooltip card (content filled by setTip on each render)
-      marker.bindTooltip('', {
+      const hasLine = Array.isArray(t.path) && t.path.length > 1;
+      // dashed over a solid white casing — reads as "trail", komoot-style
+      const casing = hasLine
+        ? L.polyline(t.path, { color: '#ffffff', weight: 8, opacity: 0.7, lineCap: 'round', lineJoin: 'round' })
+        : null;
+      const line = hasLine
+        ? L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', dashArray: '7 11' })
+        : null;
+      const marker = L.marker(t.peak, { icon: dotIcon(t), riseOnHover: true, alt: t.name });
+      // hover card, built on open so the distance follows the current base
+      marker.bindTooltip(() => tipHTML(t, { distKm: distFromBase(t), baseName: state.base.name }), {
         className: 'trail-tip',
         direction: 'top',
-        offset: [0, -16],
+        offset: [0, -10],
         opacity: 1,
       });
 
-      const group = L.layerGroup([casing, line, marker]);
-      group.addTo(map);
-      all.addLayer(casing);
-      all.addLayer(line);
-      all.addLayer(marker);
+      const lines = L.layerGroup(hasLine ? [casing, line] : []);
+      lines.addTo(map);
+      marker.addTo(map);
 
       marker.on('mouseover', () => emphasize(t.id, true));
       marker.on('mouseout', () => emphasize(t.id, false));
-      line.on('mouseover', () => {
-        emphasize(t.id, true);
-        marker.openTooltip();
-      });
-      line.on('mouseout', () => {
-        emphasize(t.id, false);
-        marker.closeTooltip();
-      });
       // click = open the detail popup in place (no page scroll);
       // press-and-hold / long-press = jump straight down to the card
       // offsets compensate Leaflet's built-in 20px popup margin (tip hidden):
-      // -2 → just above the 40px pin; 10 → ~10px above the clicked line point
+      // -2 → just above the dot; 10 → ~10px above the clicked line point
       marker.on('click', () => {
         if (consumeHold()) return;
         marker.closeTooltip();
         openTrailPopup(t, marker.getLatLng(), -2);
       });
-      line.on('click', (e) => {
-        if (consumeHold()) return;
-        marker.closeTooltip();
-        openTrailPopup(t, e.latlng, 10);
-      });
       wireHold(marker, t);
-      wireHold(line, t);
+      if (line) {
+        line.on('mouseover', () => {
+          emphasize(t.id, true);
+          marker.openTooltip();
+        });
+        line.on('mouseout', () => {
+          emphasize(t.id, false);
+          marker.closeTooltip();
+        });
+        line.on('click', (e) => {
+          if (consumeHold()) return;
+          marker.closeTooltip();
+          openTrailPopup(t, e.latlng, 10);
+        });
+        wireHold(line, t);
+      }
 
       // numbered waypoint dots at the route anchors, in track order (1 = the
-      // trailhead). Anchors sitting on the peak pin are skipped — the pin is
-      // already there. waypoints come as [lat, lng, ele, kmFromStart].
+      // trailhead). Anchors sitting on the peak marker are skipped — the
+      // marker is already there. waypoints come as [lat, lng, ele, kmFromStart].
       let dots = null;
       const wps = (t.waypoints || []).filter((p) => haversineKm([p[0], p[1]], t.peak) > 0.12);
       if (wps.length)
@@ -270,15 +258,9 @@ const total = initial.length;
           })
         );
 
-      layers[t.id] = { marker, line, casing, group, dots, trail: t };
+      layers[t.id] = { marker, line, casing, lines, dots, trail: t, shown: true };
     });
     syncDots();
-    if (all.getLayers().length) {
-      all.addLayer(basePin); // frame the base pin together with the trails
-      map.fitBounds(all.getBounds().pad(0.12));
-    } else {
-      map.setView(state.origin.coords, 11);
-    }
   }
 
   // hover card for a numbered waypoint dot — p = [lat, lng, ele, kmFromStart]
@@ -290,28 +272,16 @@ const total = initial.length;
     ].filter(Boolean);
     return `<div class="wp-tip-in"><b>${title}</b>${facts.length ? `<span>${facts.join(' · ')}</span>` : ''}</div>`;
   }
-  // One detail widget for both the hover tooltip and the click popup: all six
-  // card stats in a smaller-font 3-col grid, distance line under the name.
-  // withGo adds the wide scroll-to-card button (popup only — tooltips can't
-  // take pointer events).
-  function detailHTML(t, withGo = false) {
-    const d = haversineKm(state.base.coords, t.start);
-    return (
-      `<div class="tip-in">` +
-      `<div class="tip-head"><span class="tip-name">${t.name}</span>${badgeHTML(t.difficulty)}</div>` +
-      `<div class="tip-dist">${d.toFixed(1)} km from ${state.base.name}</div>` +
-      `<div class="tip-stats">${statsRow(t, 'tip-stat')}</div>` +
-      (withGo
-        ? `<button class="pop-go" type="button" data-id="${t.id}" title="More details" aria-label="Scroll to trail details">` +
-          `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v13M6 12l6 6 6-6"/></svg>` +
-          `</button>`
-        : '') +
-      `</div>`
-    );
-  }
 
-  function setTip(t) {
-    layers[t.id].marker.setTooltipContent(detailHTML(t));
+  // filtered-out trails keep a dimmed dot on the map for context; their line
+  // and waypoint dots go
+  function setShown(L0, on) {
+    if (L0.shown === on) return;
+    L0.shown = on;
+    if (on) L0.lines.addTo(map);
+    else map.removeLayer(L0.lines);
+    L0.marker.getElement()?.classList.toggle('is-dim', !on);
+    L0.marker.setZIndexOffset(on ? 0 : -1000);
   }
 
   function emphasize(id, on) {
@@ -320,15 +290,14 @@ const total = initial.length;
     // the selected trail stays highlighted even when the pointer leaves it
     // (and across popup close) — only selectTrail() can drop its highlight
     if (!on && id === selectedTrailId) return;
-    L0.line.setStyle({ color: on ? SELECTED : COLORS[L0.trail.difficulty], weight: on ? 6 : 4, opacity: on ? 1 : 0.9 });
-    L0.casing.setStyle({ weight: on ? 11 : 8, opacity: on ? 0.9 : 0.7 });
-    if (on) L0.line.bringToFront();
-    const el = L0.marker.getElement && L0.marker.getElement();
-    if (el) {
-      const mk = el.querySelector('.mk-pin');
-      if (mk) mk.classList.toggle('is-active', on);
+    if (L0.line) {
+      L0.line.setStyle({ color: on ? SELECTED : COLORS[L0.trail.difficulty], weight: on ? 6 : 4, opacity: on ? 1 : 0.9 });
+      L0.casing.setStyle({ weight: on ? 11 : 8, opacity: on ? 0.9 : 0.7 });
+      if (on && L0.shown) L0.line.bringToFront();
     }
-    const card = document.querySelector(`.card[data-id="${id}"]`);
+    L0.marker.getElement()?.classList.toggle('is-active', on);
+    L0.marker.setZIndexOffset(on ? 1000 : L0.shown ? 0 : -1000);
+    const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
     if (card) card.classList.toggle('is-active', on);
   }
 
@@ -345,14 +314,22 @@ const total = initial.length;
     emphasize(id, true);
   }
 
-  // map item hold / popup arrow -> scroll down to the card and flash it in
+  // map item hold / popup Details -> scroll down to the card and flash it in
   // waymark yellow (same palette as the trail-number tag) so the target is
-  // unmistakable after the scroll settles
+  // unmistakable after the scroll settles. A card past the current page is
+  // paged in first; a filtered-out one has no card to go to.
   let targetTimer;
   function scrollToCard(id) {
-    const card = document.querySelector(`.card[data-id="${id}"]`);
+    const at = lastList.findIndex((t) => t.id === id);
+    if (at < 0) return;
+    if (at >= state.limit) {
+      state.limit = Math.ceil((at + 1) / PAGE) * PAGE;
+      render();
+    }
+    const card = document.querySelector(`.card[data-id="${CSS.escape(id)}"]`);
     if (!card) return;
-    const y = card.getBoundingClientRect().top + window.pageYOffset - 90;
+    // land the card just below the sticky filter bar (1–3 rows tall by width)
+    const y = card.getBoundingClientRect().top + window.pageYOffset - (fbar.offsetHeight + 24);
     window.scrollTo({ top: y, behavior: 'smooth' });
     document.querySelectorAll('.card.is-target').forEach((c) => c.classList.remove('is-active', 'is-target'));
     card.classList.add('is-active', 'is-target');
@@ -365,46 +342,75 @@ const total = initial.length;
   function flyToTrail(id) {
     const L0 = layers[id];
     if (!L0) return;
-    map.flyToBounds(L0.line.getBounds(), { padding: [80, 80], maxZoom: 14, duration: 0.7 });
+    if (L0.line) map.flyToBounds(L0.line.getBounds(), { padding: [80, 80], maxZoom: 14, duration: 0.7 });
+    else map.flyTo(L0.trail.peak, Math.max(map.getZoom(), 12), { duration: 0.7 });
   }
 
   function scrollToMap() {
     document.querySelector('.mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // ==================== MAP POPUP + HOLD-TO-SCROLL ====================
-  // Shared popup for marker/line clicks: the expanded detail card with a wide
-  // "More details" button at the bottom that scrolls to the trail card.
-  // Dismiss = the subtle ✕ (tip-head leaves room for it) or tap the map.
+  // frame the trails currently shown (all of them when nothing matches)
+  function frameShown(animate = true) {
+    const pts = [];
+    Object.values(layers).forEach((L0) => {
+      if (!L0.shown) return;
+      pts.push(L0.trail.peak, L0.trail.start);
+      if (L0.line) pts.push(...L0.trail.path);
+    });
+    if (!pts.length) Object.values(layers).forEach((L0) => pts.push(L0.trail.peak));
+    if (!pts.length) return map.setView(state.base.coords, 11);
+    const b = L.latLngBounds(pts).pad(0.12);
+    if (animate) map.flyToBounds(b, { duration: 0.7, maxZoom: 13 });
+    else map.fitBounds(b, { maxZoom: 13 });
+  }
+
+  // ==================== MAP POPUP / TRAIL SHEET + HOLD-TO-SCROLL ====================
+  // Desktop: the shared Leaflet popup (design C card: photo, stats, access,
+  // Details / GPX / OSM). Phones: the same card in the trail bottom sheet —
+  // a popup that big would cover the whole map. Dismiss = ✕ or tap the map.
   let popupTrailId = null;
   const trailPopup = L.popup({
     className: 'trail-pop',
     closeButton: true,
-    minWidth: 252,
-    maxWidth: 252,
+    minWidth: 280,
+    maxWidth: 280,
     autoPanPadding: [46, 46],
   });
+  const trailSheet = sheet(document.getElementById('trail-sheet'));
 
   function openTrailPopup(t, latlng, offY) {
-    trailPopup.options.offset = [0, offY];
-    popupTrailId = t.id;
     // selectTrail handles dropping the previous selection's highlight — covers
     // switching straight between trails (the shared popup is just moved, so
     // 'popupclose' never fires for it)
     selectTrail(t.id);
-    trailPopup.setLatLng(latlng).setContent(detailHTML(t, true)).openOn(map);
+    const html = popupHTML(t, {
+      distKm: distFromBase(t),
+      baseName: state.base.name,
+      withGo: lastList.some((x) => x.id === t.id),
+    });
+    if (PHONE.matches) {
+      trailSheet.body.innerHTML = html;
+      trailSheet.open();
+      return;
+    }
+    trailPopup.options.offset = [0, offY];
+    popupTrailId = t.id;
+    trailPopup.setLatLng(latlng).setContent(html).openOn(map);
   }
   // closing the popup keeps the trail selected (navy) so you can compare lines
   // without a popup open — the highlight only moves when another trail is clicked
   map.on('popupclose', () => (popupTrailId = null));
-  map.on('popupopen', (e) => {
-    const btn = e.popup.getElement()?.querySelector('.pop-go');
-    if (btn)
-      btn.addEventListener('click', () => {
-        map.closePopup();
-        scrollToCard(btn.dataset.id);
-      });
-  });
+  // "Details" in either container: close it, then scroll to the card
+  function onGo(e) {
+    const btn = e.target.closest('.pop-go');
+    if (!btn) return;
+    map.closePopup();
+    trailSheet.close();
+    scrollToCard(btn.dataset.id);
+  }
+  map.getContainer().addEventListener('click', onGo);
+  trailSheet.body.addEventListener('click', onGo);
 
   // press-and-hold (~0.5 s) on a marker/line scrolls straight to the card.
   // contextmenu doubles as native long-press on touch (Leaflet's tapHold
@@ -442,59 +448,100 @@ const total = initial.length;
 
   // ============================ STATE + RENDER ============================
   const state = {
+    region: 'all', // origin slug or 'all'
     q: '',
     diffs: new Set(),
-    origin: origins[0],
+    kind: 'all', // 'all' | 'day' | 'multi'
+    must: false,
     base: { name: origins[0].name, coords: origins[0].coords },
-    maxDist: 25, // 25 == "Any"
+    maxDist: ANY_DIST,
     sort: 'dist',
+    limit: PAGE,
+    open: new Set(), // cards with "More details" expanded — survives re-renders
   };
+  let lastList = []; // the filtered + sorted list behind the grid
 
-  // every base change goes through here so the pin tracks the "From" location
+  const distFromBase = (t) => haversineKm(state.base.coords, t.start);
+
+  // every base change goes through here so the pin and subtitle track it
   function setBase(name, coords) {
     state.base = { name, coords };
     basePin.setLatLng(coords).setTooltipContent(name);
+    document.getElementById('subtitle').textContent = `Hiking finder · base: ${name}`;
   }
 
+  const SORTS = {
+    dist: (a, b) => a.distKm - b.distKm,
+    buzz: (a, b) =>
+      (BUZZ_RANK[b.buzz] ?? 0) - (BUZZ_RANK[a.buzz] ?? 0) || b.mustVisit - a.mustVisit || a.distKm - b.distKm,
+    diff: (a, b) => DIFF_RANK[a.difficulty] - DIFF_RANK[b.difficulty] || a.distKm - b.distKm,
+    peak: (a, b) => (b.peakM ?? -1) - (a.peakM ?? -1),
+    short: (a, b) => (a.lengthKm ?? Infinity) - (b.lengthKm ?? Infinity),
+  };
+
   function visibleTrails() {
-    let list = trails.map((t) => ({ ...t, distKm: haversineKm(state.base.coords, t.start) }));
     const q = state.q.trim().toLowerCase();
-    if (q)
-      list = list.filter((t) =>
-        (t.name + ' ' + t.area + ' ' + t.massif + ' ' + t.peakName + ' ' + t.blurb).toLowerCase().includes(q)
-      );
-    if (state.diffs.size) list = list.filter((t) => state.diffs.has(t.difficulty));
-    if (state.maxDist < 25) list = list.filter((t) => t.distKm <= state.maxDist);
-    if (state.sort === 'dist') list.sort((a, b) => a.distKm - b.distKm);
-    else if (state.sort === 'diff')
-      list.sort((a, b) => DIFF_RANK[a.difficulty] - DIFF_RANK[b.difficulty] || a.distKm - b.distKm);
-    else if (state.sort === 'peak') list.sort((a, b) => b.peakM - a.peakM);
-    return list;
+    const list = trails
+      .map((t) => ({ ...t, distKm: distFromBase(t) }))
+      .filter((t) => {
+        if (state.region !== 'all' && t.origin !== state.region) return false;
+        if (state.diffs.size && !state.diffs.has(t.difficulty)) return false;
+        if (state.kind === 'day' && t.type === 'Multi-day') return false;
+        if (state.kind === 'multi' && t.type !== 'Multi-day') return false;
+        if (state.must && !t.mustVisit) return false;
+        if (state.maxDist < ANY_DIST && t.distKm > state.maxDist) return false;
+        if (q) {
+          const hay = [t.name, t.area, t.massif, t.peakName, t.place, t.blurb].join(' ').toLowerCase();
+          if (!hay.includes(q)) return false;
+        }
+        return true;
+      });
+    return list.sort(SORTS[state.sort]);
   }
 
   const grid = document.getElementById('grid');
+  const fbar = document.getElementById('fbar');
   const countEl = document.getElementById('count');
+  const moreBtn = document.getElementById('more');
+  const badge = document.getElementById('fb-badge');
+
   function render() {
     const list = visibleTrails();
-    trails.forEach((t) => {
-      const shown = list.some((x) => x.id === t.id);
-      const L0 = layers[t.id];
-      if (shown && !map.hasLayer(L0.group)) L0.group.addTo(map);
-      if (!shown && map.hasLayer(L0.group)) map.removeLayer(L0.group);
-      if (shown) setTip(t);
-    });
+    lastList = list;
+    const shown = new Set(list.map((t) => t.id));
+    Object.values(layers).forEach((L0) => setShown(L0, shown.has(L0.trail.id)));
     syncDots();
-    if (popupTrailId && !list.some((x) => x.id === popupTrailId)) map.closePopup();
-    // a filtered-out selection is no longer on the map — forget it so its
-    // highlight doesn't silently linger on the hidden layer
-    if (selectedTrailId && !list.some((x) => x.id === selectedTrailId)) selectedTrailId = null;
-    grid.innerHTML = list.length
-      ? list
-          .map((t, i) => cardHTML(t, { distKm: t.distKm, baseName: state.base.name, index: i }))
+    if (popupTrailId && !shown.has(popupTrailId)) map.closePopup();
+    // a filtered-out selection has no line or card any more — forget it so
+    // its highlight doesn't silently linger on the dimmed dot
+    if (selectedTrailId && !shown.has(selectedTrailId)) {
+      const id = selectedTrailId;
+      selectedTrailId = null;
+      emphasize(id, false);
+    }
+
+    const page = list.slice(0, state.limit);
+    grid.innerHTML = page.length
+      ? page
+          .map((t, i) =>
+            cardHTML(t, { distKm: t.distKm, baseName: state.base.name, index: i, open: state.open.has(t.id) })
+          )
           .join('')
       : `<div class="empty">No trails match. Try clearing a filter.</div>`;
-    countEl.innerHTML = `<b>${list.length}</b> of ${trails.length} trails · distances from <b>${state.base.name}</b> (straight-line to trailhead)`;
+    const rest = list.length - page.length;
+    moreBtn.hidden = rest <= 0;
+    moreBtn.textContent = `Show ${Math.min(PAGE, rest)} more`;
+
+    countEl.innerHTML = `<b>${list.length}</b> of ${trails.length} trails · distances from <b>${esc(state.base.name)}</b> (straight-line to trailhead)`;
     document.getElementById('m-count').textContent = list.length;
+    document.getElementById('m-region').textContent =
+      state.region === 'all' ? 'All regions' : originBySlug[state.region].region;
+    document.getElementById('fs-count').textContent = list.length;
+    const active = state.diffs.size + (state.kind !== 'all') + state.must + (state.maxDist < ANY_DIST);
+    badge.hidden = !active;
+    badge.textContent = active;
+    // the selected trail keeps its highlight on the freshly rendered card
+    if (selectedTrailId) document.querySelector(`.card[data-id="${CSS.escape(selectedTrailId)}"]`)?.classList.add('is-active');
     wireCards();
   }
 
@@ -516,17 +563,104 @@ const total = initial.length;
         flyToTrail(id);
         scrollToMap();
       });
-      // GPX link opens the external download — don't also fly the map
-      card.querySelector('.gpxdl')?.addEventListener('click', (e) => e.stopPropagation());
+      // downloads, the photo credit and the "More details" panel are their own
+      // thing — don't also fly the map
+      card
+        .querySelectorAll('.gpxdl, .credit, .more')
+        .forEach((el) => el.addEventListener('click', (e) => e.stopPropagation()));
+      const more = card.querySelector('.more');
+      more?.addEventListener('toggle', () => (more.open ? state.open.add(id) : state.open.delete(id)));
     });
   }
 
+  moreBtn.addEventListener('click', () => {
+    state.limit += PAGE;
+    render();
+  });
+
   // ============================ CONTROLS ============================
+  const press = (btn, on) => {
+    btn.classList.toggle('on', on);
+    btn.setAttribute('aria-pressed', String(on));
+  };
+
+  // region chips — filter to one origin, measure from its home town and fly
+  // the map there; "All" keeps the current base
+  const regionBtns = [...document.querySelectorAll('.fb-regions .seg')];
+  function setRegion(slug, { fly = true } = {}) {
+    state.region = slug;
+    state.limit = PAGE;
+    regionBtns.forEach((b) => press(b, b.dataset.region === slug));
+    if (slug !== 'all') {
+      const o = originBySlug[slug];
+      setBase(o.name, o.coords);
+      fromInput.value = o.name;
+    }
+    fillBases();
+    render();
+    if (fly) frameShown();
+  }
+  regionBtns.forEach((b) => b.addEventListener('click', () => setRegion(b.dataset.region)));
+
+  // difficulty — three toggles; none active == show all
+  const diffBtns = [...document.querySelectorAll('#fb-diff .seg')];
+  diffBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      const d = b.dataset.d;
+      const on = !state.diffs.has(d);
+      if (on) state.diffs.add(d);
+      else state.diffs.delete(d);
+      press(b, on);
+      state.limit = PAGE;
+      render();
+    })
+  );
+
+  const kindBtns = [...document.querySelectorAll('.fb-kind .seg')];
+  kindBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      state.kind = b.dataset.kind;
+      kindBtns.forEach((x) => press(x, x === b));
+      state.limit = PAGE;
+      render();
+    })
+  );
+
+  const mustBtn = document.getElementById('must');
+  mustBtn.addEventListener('click', () => {
+    state.must = !state.must;
+    press(mustBtn, state.must);
+    state.limit = PAGE;
+    render();
+  });
+
+  document.getElementById('q').addEventListener('input', (e) => {
+    state.q = e.target.value;
+    state.limit = PAGE;
+    render();
+  });
+  const sortSel = document.getElementById('sort');
+  sortSel.addEventListener('change', () => {
+    state.sort = sortSel.value;
+    render();
+  });
+  const distRange = document.getElementById('dist');
+  const distVal = document.getElementById('distVal');
+  const showDist = () => (distVal.textContent = state.maxDist >= ANY_DIST ? 'Any' : `${state.maxDist} km`);
+  distRange.addEventListener('input', () => {
+    state.maxDist = +distRange.value;
+    showDist();
+    state.limit = PAGE;
+    render();
+  });
+
   const bl = document.getElementById('bases');
   function fillBases() {
     bl.innerHTML = '';
-    // origins first (typing one switches the whole region), then local base towns
-    const names = new Set([...origins.map((o) => o.name), ...Object.keys(state.origin.bases)]);
+    // origin home towns first (typing one switches the region), then the
+    // selected region's base towns (every region's under "All")
+    const regions = state.region === 'all' ? origins : [originBySlug[state.region]];
+    const names = new Set([...origins.map((o) => o.name), ...regions.flatMap((o) => Object.keys(o.bases))]);
     names.forEach((n) => {
       const o = document.createElement('option');
       o.value = n;
@@ -534,61 +668,32 @@ const total = initial.length;
     });
   }
 
-  document.getElementById('q').addEventListener('input', (e) => {
-    state.q = e.target.value;
-    render();
-  });
-  document.getElementById('sort').addEventListener('change', (e) => {
-    state.sort = e.target.value;
-    render();
-  });
-  const distRange = document.getElementById('dist');
-  const distVal = document.getElementById('distVal');
-  distRange.addEventListener('input', () => {
-    state.maxDist = +distRange.value;
-    distVal.textContent = state.maxDist >= 25 ? 'Any' : `${state.maxDist} km`;
-    render();
-  });
-  // difficulty filter — three colour toggles; none active == show all
-  document.querySelectorAll('.tgl').forEach((b) => {
-    b.addEventListener('click', () => {
-      const d = b.dataset.d;
-      const on = !state.diffs.has(d);
-      if (on) state.diffs.add(d);
-      else state.diffs.delete(d);
-      b.classList.toggle('on', on);
-      b.setAttribute('aria-pressed', String(on));
-      render();
-    });
-  });
-
   const fromInput = document.getElementById('from');
   async function resolveBase() {
     const name = fromInput.value.trim();
     if (!name) return;
-    // an origin name switches the whole region (same as the region select)
+    // an origin's home town switches to its region (same as its chip)
     const o = origins.find((x) => x.name.toLowerCase() === name.toLowerCase());
     if (o) {
-      if (o.slug !== state.origin.slug) {
-        originSel.value = o.slug;
-        loadOrigin(o.slug);
-      } else {
+      if (o.slug !== state.region) setRegion(o.slug);
+      else {
         setBase(o.name, o.coords);
         render();
       }
       return;
     }
-    if (state.origin.bases[name]) {
-      setBase(name, state.origin.bases[name]);
+    const known = origins.map((x) => x.bases[name]).find(Boolean);
+    if (known) {
+      setBase(name, known);
       render();
       return;
     }
     // try Nominatim (OpenStreetMap) for anything else; biased to the region
     try {
       fromInput.style.opacity = 0.6;
+      const bias = state.region === 'all' ? '' : ', ' + originBySlug[state.region].searchBias;
       const url =
-        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' +
-        encodeURIComponent(name + ', ' + state.origin.searchBias);
+        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(name + bias);
       const r = await fetch(url, { headers: { Accept: 'application/json' } });
       const j = await r.json();
       if (j && j[0]) {
@@ -625,46 +730,72 @@ const total = initial.length;
     bLight.classList.remove('on');
   });
 
-  document
-    .getElementById('recenter')
-    .addEventListener('click', () => map.flyToBounds(all.getBounds().pad(0.12), { duration: 0.6 }));
+  document.getElementById('recenter').addEventListener('click', () => frameShown());
 
-  // ============================ ORIGIN (region) ============================
-  const originSel = document.getElementById('origin');
-  originSel.addEventListener('change', () => loadOrigin(originSel.value));
+  // ============================ PHONE LAYOUT ============================
+  // Difficulty + the whole second row live in the filter sheet below 640px.
+  const filterSheet = sheet(document.getElementById('filter-sheet'));
+  const fsSlot = document.getElementById('fs-slot');
+  relocate(document.getElementById('fb-diff'), fsSlot);
+  relocate(document.getElementById('fb-row2'), fsSlot);
+  document.getElementById('fb-more-btn').addEventListener('click', filterSheet.open);
+  document.getElementById('fs-reset').addEventListener('click', () => {
+    state.diffs.clear();
+    diffBtns.forEach((b) => press(b, false));
+    state.kind = 'all';
+    kindBtns.forEach((b) => press(b, b.dataset.kind === 'all'));
+    state.must = false;
+    press(mustBtn, false);
+    state.maxDist = ANY_DIST;
+    distRange.value = ANY_DIST;
+    showDist();
+    state.sort = 'dist';
+    sortSel.value = 'dist';
+    state.limit = PAGE;
+    render();
+  });
 
-  // Switch the whole dataset to another origin: bundled data first (instant,
-  // offline-safe), then live D1 via the Worker. Filters survive the switch;
-  // the base resets to the origin's home town.
-  async function loadOrigin(slug) {
-    const o = origins.find((x) => x.slug === slug) || origins[0];
-    state.origin = o;
-    setBase(o.name, o.coords);
-    fromInput.value = o.name;
-    fillBases();
-    document.getElementById('title').textContent = o.title;
-    document.getElementById('subtitle').textContent = `Hiking finder · base: ${o.name}`;
-    document.getElementById('m-region').textContent = o.region;
-    document.title = `${o.title} — ${o.name}`;
-
-    trails = staticTrails.filter((t) => t.origin === o.slug);
+  // ============================ DATA ============================
+  // Bundled data first (instant, offline-safe), then every region from D1 via
+  // the Worker. A popup / selection open across the swap is restored.
+  async function loadData() {
+    trails = staticTrails;
     buildLayers();
     render();
+    frameShown(false);
+    applyDeepLink();
 
     try {
-      const r = await fetch(`/api/trails?origin=${o.slug}`);
-      if (r.ok) {
-        const j = await r.json();
-        if (Array.isArray(j.trails) && j.trails.length && state.origin === o) {
-          trails = j.trails;
-          buildLayers();
-          render();
-        }
-      }
+      const r = await fetch('/api/trails?origin=all');
+      if (!r.ok) return;
+      const j = await r.json();
+      if (!Array.isArray(j.trails) || !j.trails.length) return;
+      const keepPopup = popupTrailId;
+      const keepSel = selectedTrailId;
+      trails = j.trails.map(decorate);
+      buildLayers();
+      render();
+      if (keepSel && layers[keepSel]) selectTrail(keepSel);
+      if (keepPopup && layers[keepPopup]) openTrailPopup(layers[keepPopup].trail, layers[keepPopup].trail.peak, -2);
     } catch {
       /* offline or no API — keep the build-time snapshot */
     }
   }
 
-  loadOrigin(origins[0].slug);
+  // /?region=<origin slug> filters to a region; /?trail=<id> (the Explore
+  // page's "Show on map") flies to that trail and opens its card on the map
+  function applyDeepLink() {
+    const params = new URLSearchParams(location.search);
+    const region = params.get('region');
+    if (region && originBySlug[region]) setRegion(region, { fly: false }), frameShown(false);
+    const L0 = layers[params.get('trail')];
+    if (!L0) return;
+    const t = L0.trail;
+    if (L0.line) map.fitBounds(L0.line.getBounds(), { padding: [60, 60], maxZoom: 14 });
+    else map.setView(t.peak, 13);
+    openTrailPopup(t, t.peak, -2);
+  }
+
+  fillBases();
+  loadData();
 </script>

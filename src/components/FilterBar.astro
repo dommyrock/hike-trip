@@ -1,0 +1,93 @@
+---
+// Trail-finder filter bar (design B pill bar, two rows).
+//   row 1  region chips · difficulty · search      (+ the phone-only Filters button)
+//   row 2  From base · Within slider · trip length · must visit · sort
+// On phones the difficulty group and row 2 move into the filter bottom sheet
+// (src/lib/mobile.js relocate) — same elements, so the wiring in index.astro
+// doesn't care which layout is active.
+interface Props {
+  origins: { slug: string; label: string; name: string }[];
+  counts: Record<string, number>;
+  total: number;
+  home: { name: string };
+}
+
+import { DIFF_LABEL } from '../lib/geo.js';
+
+const { origins, counts, total, home } = Astro.props;
+const DIFFS = Object.entries(DIFF_LABEL);
+const KINDS = [
+  ['all', 'All'],
+  ['day', 'Day hikes'],
+  ['multi', 'Multi-day'],
+];
+---
+
+<div class="fbar" id="fbar">
+  <div class="fb-row">
+    <div class="fb-regions" role="group" aria-label="Region">
+      <button type="button" class="seg on" data-region="all" aria-pressed="true">All <small>{total}</small></button>
+      {
+        origins.map((o) => (
+          <button type="button" class="seg" data-region={o.slug} aria-pressed="false">
+            {o.label} <small>{counts[o.slug]}</small>
+          </button>
+        ))
+      }
+    </div>
+    <div class="fb-diff" id="fb-diff" role="group" aria-label="Difficulty">
+      {
+        DIFFS.map(([d, label]) => (
+          <button type="button" class="seg" data-d={d} aria-pressed="false">
+            <i class={`dot dot--${d}`} />
+            {label}
+          </button>
+        ))
+      }
+    </div>
+    <div class="fb-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-3.2-3.2"></path></svg>
+      <input id="q" type="search" placeholder="Search trails, peaks, areas…" autocomplete="off" aria-label="Search trails, peaks, areas" />
+    </div>
+    <button type="button" class="fb-more-btn" id="fb-more-btn" aria-haspopup="dialog" aria-controls="filter-sheet">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"></path><circle cx="16" cy="6" r="2"></circle><circle cx="10" cy="12" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>
+      Filters <b class="fb-badge" id="fb-badge" hidden>0</b>
+    </button>
+  </div>
+
+  <div class="fb-row fb-row2" id="fb-row2">
+    <div class="fb-from" title="Distances are measured from here">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11Z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>
+      <input id="from" type="text" list="bases" value={home.name} autocomplete="off" aria-label="Distances from" />
+      <datalist id="bases"></datalist>
+    </div>
+    <div class="fb-within">
+      <label class="lbl" for="dist">Within</label>
+      <input id="dist" type="range" min="2" max="25" step="1" value="25" title="Max distance from base" />
+      <span class="val" id="distVal">Any</span>
+    </div>
+    <div class="fb-kind" role="group" aria-label="Trip length">
+      {
+        KINDS.map(([k, label], i) => (
+          <button type="button" class:list={['seg', { on: i === 0 }]} data-kind={k} aria-pressed={i === 0 ? 'true' : 'false'}>
+            {label}
+          </button>
+        ))
+      }
+    </div>
+    <button type="button" class="seg seg--must" id="must" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"></path></svg>
+      Must visit
+    </button>
+    <label class="fb-sort">
+      <span>Sort</span>
+      <select id="sort">
+        <option value="dist">Nearest</option>
+        <option value="buzz">Trending</option>
+        <option value="diff">Easiest first</option>
+        <option value="peak">Highest point</option>
+        <option value="short">Shortest</option>
+      </select>
+    </label>
+  </div>
+</div>

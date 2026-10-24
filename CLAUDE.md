@@ -1,7 +1,9 @@
 # hike-trip
 
-Hiking-trail finder with multiple "origins" (base regions): Ortisei / Val
-Gardena (Dolomites) and Kranjska Gora (Julian Alps · Triglav NP).
+Hiking-trail finder across five "origins" (regions): Dolomites (base Ortisei),
+Julian Alps (Kranjska Gora), Austria (Innsbruck), Switzerland (Interlaken) and
+Germany (Garmisch-Partenkirchen), all on one map. Two pages: the trail finder
+(`/`) and Explore the Alps (`/explore/`, the curated set as postcards).
 Astro static shell + one Leaflet island, deployed as a single Cloudflare Worker
 (static assets + `/api/*` from D1/SQLite).
 
@@ -12,6 +14,7 @@ npm run dev              # Astro dev only — API absent, client falls back to b
 npm run preview:cf       # build + wrangler dev → full stack with LOCAL D1 (:8787)
 npm run deploy           # build + wrangler deploy (needs database_id in wrangler.toml)
 npm run bake:geo         # detailed OSM-routed paths + public/gpx/*.gpx via BRouter (see below)
+npm run explore:gen      # data/explore/*.csv + data/photos.csv -> src/data/trails-explore.js
 npm run db:seed:gen      # regenerate db/seed.sql from src/data/trails.js
 npm run db:apply         # schema + seed → LOCAL D1
 npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops + reseeds)
@@ -20,19 +23,49 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
 ## Architecture / data flow
 
 - `src/data/trails.js` is the **single source of truth**: it defines the
-  `origins` registry (slug, title, region, home coords, per-origin "From" bases,
-  Nominatim search bias) and merges per-origin trail files
-  (`trails-ortisei.js`, `trails-kranjska-gora.js`), tagging each entry with
-  `origin`. It seeds D1 (via `db/generate-seed.mjs` → `db/seed.sql`) *and* ships
-  in the client bundle as the offline/API-missing fallback. After editing:
+  `origins` registry (slug, chip `label`, `country`, title, region, home coords,
+  per-origin "From" bases, Nominatim search bias) and merges the hand-curated
+  per-origin files (`trails-ortisei.js`, `trails-kranjska-gora.js`) with the
+  GENERATED `trails-explore.js`, tagging each entry with `origin`. It seeds D1
+  (via `db/generate-seed.mjs` → `db/seed.sql`) *and* ships in the client bundle as
+  the offline/API-missing fallback. After editing:
   `npm run db:seed:gen && npm run db:apply`.
-- `worker/index.js` answers `GET /api/trails?origin=<slug>` from D1 (tables:
-  `origins` 1──< `trails`) and serves `./dist` for everything else. Response rows are
-  mapped back to the exact `trails.js` object shape — keep the two in sync.
-- The client region switcher (`#origin` select in `index.astro`) calls
-  `loadOrigin(slug)`: bundled data renders instantly, then the D1 response
-  replaces it. SSR/no-JS shows `origins[0]` (Ortisei) only.
-- `db/seed.sql` is generated — never edit by hand.
+- **Explore set** = `data/explore/<region>.csv` (research data; columns in
+  `data/explore/README.md`) → `npm run explore:gen` → `src/data/trails-explore.js`:
+  `in_app=no` rows become new trails of origin `GROUP_ORIGIN[region]` (the
+  Dolomites CSV joins `ortisei`); `in_app=yes` rows only **overlay** photo / buzz /
+  access note / explore group onto the existing hand-curated trail (its verified
+  figures win). `data/photos.csv` overlays photos for the other app trails. Every
+  trail has a photo in `public/photos/<id>.webp` (Wikimedia Commons, CC BY / BY-SA
+  / CC0 / PD — the credit line on cards and popups is a licence term, never drop it).
+  New explore trails have no `path` yet: they show as a dot only (no line, no GPX).
+- `decorate(t)` in trails.js adds display fields derived from the registry
+  (`place` = "Bernese Oberland · Switzerland"); the client applies it to
+  `/api/trails` rows too.
+- `worker/index.js` answers `GET /api/trails?origin=<slug>` and
+  `?origin=all` from D1 (tables: `origins` 1──< `trails`) and serves `./dist` for
+  everything else. Response rows are mapped back to the exact `trails.js` object
+  shape (NULL columns left out) — keep the two in sync. A new `trails` column =
+  `schema.sql` + `generate-seed.mjs` + `toTrail()`/`TRAIL_COLUMNS` in the Worker,
+  and `npm run db:apply:remote` BEFORE `npm run deploy` (an old remote schema makes
+  the new Worker's query fail; the client then keeps the bundled data).
+- The trail finder (`index.astro`) loads every region at once: bundled data
+  renders instantly, then `/api/trails?origin=all` replaces it. Region chips
+  filter (cards + dimmed dots) and set the base to that origin's home; SSR/no-JS
+  shows the first 24 cards nearest Ortisei. Deep links: `/?trail=<id>` (opens its
+  popup — the Explore postcards use it) and `/?region=<slug>`.
+- Card / tooltip / popup markup lives only in `src/lib/card.js` (SSR + client).
+  Cards show a 3-line preview; the native `<details>` "More details" holds the
+  full `description ?? blurb` and the facts — **don't drop trail text from the
+  card**, it belongs there.
+- **Phones (≤640px)** have their own components: `BottomSheet.astro` +
+  `src/lib/mobile.js` (`sheet()`, `relocate()`). The filter bar's difficulty
+  group and second row are MOVED into the filter sheet (same nodes — listeners
+  carry over); dot taps open the trail sheet instead of a Leaflet popup; Explore
+  regions become scroll-snap carousels. Keep the 640px breakpoint in
+  `mobile.js` and `global.css` in sync.
+- `db/seed.sql` is generated — never edit by hand (one INSERT per trail: a single
+  statement hits D1's `SQLITE_TOOBIG`).
 - **Baked geometry / GPX** (`npm run bake:geo`, `db/bake-geometry.mjs`): routes each
   trail's schematic anchor points through BRouter (`hiking-mountain` profile, OSM
   path graph, public brouter.de — throttled, responses cached in `db/geo-cache/`),
@@ -98,10 +131,12 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
   trailhead/hut/summit coords) and double as the **via-points for the geometry
   bake** — at render time most trails use the OSM-routed detailed line from
   `paths-baked.js` instead. Suspect anchor coords ⇒ suspect baked route.
-- Trails belong to one of two origins: `ortisei` (incl. far-east day trips
-  Giau/Falzarego/Tre Cime ~25–70 km away) and `kranjska_gora` (incl. Triglav via
-  Krma ~20 km away) — distances shown are straight-line from the chosen base,
-  that's expected.
+- Trails belong to one of five origins: `ortisei` (the Dolomites chip — incl.
+  far-east day trips Giau/Falzarego/Tre Cime ~25–70 km away and the explore
+  Dolomites set out to the Brenta), `kranjska_gora` (incl. Triglav via Krma ~20 km
+  away), `austria`, `switzerland` (incl. the Haute Route and the TMB, which start in
+  France) and `germany` — distances shown are straight-line from the chosen base,
+  that's expected (hundreds of km under "All").
 - Kranjska Gora set (2026-06) is OSM-verified, ≥2 sources per figure (sources:
   hribi.net, outdooractive, komoot, summitpost, tnp.si). **Martuljek Waterfalls
   deliberately excluded** — gorge landslide damage, upper-falls route officially

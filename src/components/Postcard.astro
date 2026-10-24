@@ -1,0 +1,68 @@
+---
+// Explore postcard (design B): full-bleed photo, stats as frosted chips.
+// The title is a stretched link to the trail on the finder map; the photo
+// credit sits above it so it stays clickable (no nested links).
+// data-* attributes feed the client-side filter in explore.astro.
+import { timeOf } from '../lib/card.js';
+import { DIFF_LABEL } from '../lib/geo.js';
+import { ICON } from '../lib/icons.js';
+
+interface Props {
+  trail: any;
+}
+
+const { trail: t } = Astro.props;
+const n = (v: number) => v.toLocaleString('en-US');
+const chips = [
+  t.lengthKm != null && `${t.lengthKm} km`,
+  t.ascentM != null && `+${n(t.ascentM)} m`,
+  timeOf(t) !== '—' && timeOf(t),
+  t.peakM != null && `▲ ${n(t.peakM)} m`,
+].filter(Boolean);
+const search = [t.name, t.area, t.massif, t.place, t.blurb].join(' ').toLowerCase();
+// the first clause of the access note is enough on a postcard
+const noteShort = t.accessNote?.split(/;|\. /)[0].replace(/\.$/, '');
+---
+
+<article
+  class="pc"
+  data-group={t.exploreGroup}
+  data-d={t.difficulty}
+  data-multi={t.type === 'Multi-day' ? '1' : '0'}
+  data-search={search}
+>
+  {t.photo && <img src={t.photo.src} alt="" width="720" height="480" loading="lazy" decoding="async" />}
+  <div class="pc-shade"></div>
+  <div class="pc-top">
+    <span class="pc-diff"><i class={`dot dot--${t.difficulty}`}></i>{DIFF_LABEL[t.difficulty]}</span>
+    <span class="pc-type">{t.type}</span>
+    {
+      t.mustVisit && (
+        <span class="pc-must" title="Must visit" role="img" aria-label="Must visit">
+          <Fragment set:html={ICON.heart} />
+        </span>
+      )
+    }
+  </div>
+  <div class="pc-bottom">
+    <div class="pc-area">{t.area}</div>
+    <h3><a class="pc-link" href={`/?trail=${encodeURIComponent(t.id)}`}>{t.name}</a></h3>
+    <p class="pc-blurb">{t.blurb}</p>
+    <div class="pc-chips">{chips.map((c) => <span>{c}</span>)}</div>
+    {
+      noteShort && (
+        <div class="pc-note">
+          <Fragment set:html={ICON.info} />
+          <span>{noteShort}</span>
+        </div>
+      )
+    }
+    {
+      t.photo && (
+        <a class="pc-credit" href={t.photo.source} target="_blank" rel="noopener">
+          Photo: {t.photo.credit} · {t.photo.license}
+        </a>
+      )
+    }
+  </div>
+</article>
