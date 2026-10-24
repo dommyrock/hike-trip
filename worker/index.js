@@ -24,6 +24,7 @@ function toTrail(r) {
     massif: r.massif,
     access: r.access,
     accessNote: r.access_note,
+    accessNoteAsOf: r.access_note_as_of,
     start: [r.start_lat, r.start_lng],
     peak: [r.peak_lat, r.peak_lng],
     path: JSON.parse(r.path),
@@ -54,7 +55,7 @@ const json = (data, status = 200) =>
 const TRAIL_COLUMNS = `t.slug, o.slug AS origin, t.name, t.area, t.trail_no, t.difficulty,
                 t.must_visit, t.type, t.season, t.days,
                 t.length_km, t.ascent_m, t.descent_m, t.duration_h,
-                t.peak_m, t.peak_name, t.massif, t.access, t.access_note,
+                t.peak_m, t.peak_name, t.massif, t.access, t.access_note, t.access_note_as_of,
                 t.start_lat, t.start_lng, t.peak_lat, t.peak_lng,
                 t.path, t.waypoints, t.gpx, t.blurb, t.description,
                 t.region_name, t.country, t.buzz, t.why, t.explore_group, t.photo`;

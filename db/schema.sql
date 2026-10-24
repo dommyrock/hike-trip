@@ -45,6 +45,7 @@ CREATE TABLE trails (
   region_name   TEXT,                     -- 'Bernese Oberland' (falls back to the origin's label)
   country       TEXT,
   access_note   TEXT,                     -- 2025–26 fee / closure / booking note
+  access_note_as_of TEXT,                 -- 'YYYY-MM' the note was last checked
   buzz          TEXT,                     -- 'low' | 'medium' | 'high' | 'very-high' (editorial)
   why           TEXT,                     -- why it trends
   explore_group TEXT,                     -- 'dolomites' | 'austria' | ... = shown on /explore

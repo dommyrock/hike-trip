@@ -8,40 +8,11 @@
 //                  figures win); only the explore metadata (photo, buzz, access
 //                  note, group) is overlaid onto it
 // data/photos.csv — photos for the app's own trails that aren't in the explore set.
-import { readFileSync, writeFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { trails as ortisei } from '../src/data/trails-ortisei.js';
 import { trails as kranjskaGora } from '../src/data/trails-kranjska-gora.js';
-
-const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-
-// explore CSV -> origin slug in src/data/trails.js (the Dolomites set joins Val Gardena's)
-const GROUP_ORIGIN = { dolomites: 'ortisei', austria: 'austria', switzerland: 'switzerland', germany: 'germany' };
-
-// RFC 4180-ish: quoted fields, "" escapes, commas/newlines inside quotes
-function parseCSV(text) {
-  const rows = [];
-  let row = [];
-  let cell = '';
-  let quoted = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') (cell += '"'), i++;
-      else if (ch === '"') quoted = false;
-      else cell += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === ',') row.push(cell), (cell = '');
-    else if (ch === '\n') row.push(cell), rows.push(row), (row = []), (cell = '');
-    else if (ch !== '\r') cell += ch;
-  }
-  if (cell || row.length) row.push(cell), rows.push(row);
-  const [head, ...body] = rows;
-  // a blank line (e.g. an extra newline at EOF) is not a trail
-  return body.filter((r) => r.some((c) => c.trim() !== '')).map((r) => Object.fromEntries(head.map((k, i) => [k, r[i] ?? ''])));
-}
-const read = (rel) => parseCSV(readFileSync(join(root, rel), 'utf8'));
+import { root, GROUP_ORIGIN, readCSV as read } from './csv.mjs';
 
 // blank = unknown -> the key is left out, never guessed
 const num = (v) => (v === '' ? undefined : Number(v));
@@ -64,8 +35,12 @@ for (const group of Object.keys(GROUP_ORIGIN)) {
       buzz: str(r.buzz),
       why: str(r.trending_reason),
       accessNote: str(r.access_note),
+      // fees and closures go stale: every note carries the month it was checked
+      accessNoteAsOf: str(r.access_note_as_of),
       photo: photoOf(r),
     };
+    if (r.access_note && !/^\d{4}-(0[1-9]|1[0-2])$/.test(r.access_note_as_of))
+      problems.push(`${group}/${r.slug}: access_note needs access_note_as_of as YYYY-MM`);
     if (r.in_app === 'yes') {
       if (!appIds.has(r.slug)) problems.push(`${group}/${r.slug}: in_app=yes but no such trail in trails-*.js`);
       overlays[r.slug] = prune(meta);

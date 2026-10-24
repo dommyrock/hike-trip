@@ -1,0 +1,30 @@
+# Twice a year — before the summer and before the winter season — open an
+# issue with a checklist of every Explore trail's access note (fees, closures,
+# bookings go stale). Node built-ins only, no npm install; public repo, so no
+# Actions minutes are billed.
+name: access-notes re-check
+
+on:
+  schedule:
+    - cron: '0 7 1 4,10 *' # 1 April and 1 October, 07:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  open-issue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build the checklist
+        run: node db/access-notes-report.mjs > report.md
+      - name: Open the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue create --title "Re-check Explore access notes ($(date -u +%Y-%m))" --label maintenance --body-file report.md

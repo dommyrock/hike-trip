@@ -37,6 +37,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Headlamp descent through restored Austro-Italian war tunnels, from the famous Lagazuoi hut terrace",
   "accessNote": "Helmet, headlamp, gloves and a via-ferrata kit are mandatory in the tunnels.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/lagazuoi-tunnels.webp",
    "credit": "kallerna",
@@ -116,6 +117,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Alpenglow on the Vajolet spires is a classic Dolomites image",
   "accessNote": "Rifugio Re Alberto I is open about 20 Jun – 20 Sep.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/rosengarten-vajolet.webp",
    "credit": "Vincenzo Gianferrari Pini",
@@ -156,6 +158,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "The “rainbow lake” mirroring the Latemar, a fixed stop on the Great Dolomites Road",
   "accessNote": "Swimming and drones are banned.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/lago-di-carezza.webp",
    "credit": "Olga1969",
@@ -196,6 +199,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "The church-and-Geisler-peaks view is the stock image of the Dolomites",
   "accessNote": "Drones are banned (fines up to €3,000).",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/santa-maddalena-church.webp",
    "credit": "Wolfgang Moroder",
@@ -315,6 +319,7 @@ export const exploreTrails = [
   "buzz": "medium",
   "why": "The most famous ledge via ferrata in the Alps, past the Campanile Basso",
   "accessNote": "Full via-ferrata kit and helmet required. Rifugio Pedrotti reopens 20 Jun 2026 after renovation.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/sentiero-bocchette-centrali.webp",
    "credit": "Ste Valentini",
@@ -355,6 +360,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "Hallstatt is Europe’s best-known overtourism story; the Skywalk is its classic overhead shot",
   "accessNote": "The Soleweg section Salzberg–Steeg is closed after rockfall; check hallstatt.net.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/hallstatt-skywalk.webp",
    "credit": "Sashi kala Khatri",
@@ -472,6 +478,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Austria’s highest peak above its longest, fast-retreating glacier",
   "accessNote": "The Gamsgrubenweg is closed beyond tunnel 6 except for mountaineers.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/grossglockner-pasterze.webp",
    "credit": "Bernd Thaller",
@@ -550,6 +557,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Austria’s highest waterfall (380 m), a perennial top Austria sight",
   "accessNote": "Wasserfallweg admission about €9; open mid-April to the end of October.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/krimml-falls.webp",
    "credit": "Unknown",
@@ -707,6 +715,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "Spring snowmelt floods the park; the underwater benches and paths went viral",
   "accessNote": "Best mid-May to June; the lake shrinks through the summer.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/gruener-see.webp",
    "credit": "GT1976",
@@ -1141,6 +1150,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Base camp of the Matterhorn’s Hörnli ridge, the most famous climbing route in the Alps",
   "accessNote": "Hut open mid-June to mid-September; fixed-rope sections (SAC T3–T4).",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/hoernlihuette.webp",
    "credit": "Sunna",
@@ -1179,6 +1189,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "Glacier-fed turquoise lake under the Blüemlisalp; heavily shared aerial and lakeside shots",
   "accessNote": "A rockfall from the Spitze Stei on 8 Aug 2026 did not reach visitor areas; the south-west end of the lake has been closed since 2019.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/oeschinensee.webp",
    "credit": "Günter Seggebäing, Coesfeld",
@@ -1452,6 +1463,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "The valley of 72 waterfalls under sheer cliffs, an endlessly shared Swiss scene",
   "accessNote": "Trümmelbach Falls entry about CHF 18; open April to early November.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/lauterbrunnen-trummelbach.webp",
    "credit": "Chensiyuan",
@@ -1531,6 +1543,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "The most famous multi-day walk in the Alps",
   "accessNote": "From 2027 the French communes plan to require a booked bed every night and ban bivouacs; Refuge de la Croix du Bonhomme closes after mid-August 2026 for renovation (reopening about 2029).",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/tour-du-mont-blanc.webp",
    "credit": "Ximonic, Simo Räsänen",
@@ -1569,6 +1582,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "A 700 m long, 80 m deep gorge that freezes into icicle curtains in winter",
   "accessNote": "Entry €10; the path past the gorge to Vordergraseck is closed 21 Sep – 20 Nov 2026 for construction.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/partnachklamm.webp",
    "credit": "Richard Bartz, Munich Makro Freak",
@@ -1609,6 +1623,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Wild tunnels and waterfalls at the foot of the Zugspitze, quieter than the Partnachklamm",
   "accessNote": "Bridges are removed over winter; the gorge reopens around late May.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/hoellentalklamm.webp",
    "credit": "Christian Nawroth",
@@ -1689,6 +1704,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Germany’s highest summit by its most spectacular route",
   "accessNote": "Glacier (Höllentalferner) plus via ferrata: crampons, helmet and harness.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/zugspitze-hoellental.webp",
    "credit": "Heinrich Stürzl",
@@ -1727,6 +1743,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "The fairytale-castle view from the bridge is one of Germany’s most photographed scenes",
   "accessNote": "The bridge closes in snow and ice; the Pöllat gorge path was closed through 2024 after storm damage, so check before going.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/neuschwanstein-marienbruecke.webp",
    "credit": "Tauno & Simo Räsänen",
@@ -1767,6 +1784,7 @@ export const exploreTrails = [
   "buzz": "very-high",
   "why": "The onion-domed chapel of St. Bartholomä under the Watzmann east face is the classic Bavarian postcard",
   "accessNote": "The ice chapel has collapsed and entering it is prohibited; walk to the viewpoint only.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/koenigssee-eiskapelle.webp",
    "credit": "Diego Delso",
@@ -1807,6 +1825,7 @@ export const exploreTrails = [
   "buzz": "medium",
   "why": "Clear pools and waterfalls in a narrow gorge, up to a pilgrimage church",
   "accessNote": "Closed in winter because of falling ice; small entry fee.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/almbachklamm.webp",
    "credit": "Geolina163",
@@ -1848,6 +1867,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Germany’s most famous ridge tour",
   "accessNote": "Exposed, cabled ridge: a long two-day tour with a night at the Watzmannhaus.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/watzmann-ueberschreitung.webp",
    "credit": "Jörg Braukmann",
@@ -1927,6 +1947,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Germany’s classic via ferrata to a pyramid summit above Garmisch",
   "accessNote": "B-grade via ferrata: helmet and full kit required.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/alpspitze-ferrata.webp",
    "credit": "Günter Seggebäing",
@@ -1965,6 +1986,7 @@ export const exploreTrails = [
   "buzz": "high",
   "why": "Named Germany’s natural wonder of 2025",
   "accessNote": "Open daily with last entry at 16:00; online tickets; closures possible in bad weather.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/breitachklamm.webp",
    "credit": "Hilarmont",
@@ -1996,6 +2018,7 @@ export const overlays = {
   "buzz": "very-high",
   "why": "The tilted Odle ridge is one of the most-shared Alpine images; summer crowds of thousands a day led to the 2025 turnstile protest",
   "accessNote": "Since July 2025 landowners have intermittently run a €5 turnstile on the path to the summit cross; a signed bypass keeps the viewpoint free.",
+  "accessNoteAsOf": "2026-10",
   "photo": {
    "src": "/photos/seceda-ridge.webp",
    "credit": "Wolfgang Moroder",

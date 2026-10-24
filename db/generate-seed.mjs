@@ -30,7 +30,7 @@ const lines = [
 // One INSERT per trail: a single multi-row statement outgrew D1's statement
 // size limit (SQLITE_TOOBIG) once baked paths and the explore set were in.
 const INSERT_TRAIL =
-  'INSERT INTO trails (origin_id, slug, name, area, trail_no, difficulty, must_visit, type, season, length_km, ascent_m, duration_h, peak_m, peak_name, massif, access, start_lat, start_lng, peak_lat, peak_lng, path, waypoints, gpx, blurb, days, descent_m, region_name, country, access_note, buzz, why, explore_group, photo, description) VALUES';
+  'INSERT INTO trails (origin_id, slug, name, area, trail_no, difficulty, must_visit, type, season, length_km, ascent_m, duration_h, peak_m, peak_name, massif, access, start_lat, start_lng, peak_lat, peak_lng, path, waypoints, gpx, blurb, days, descent_m, region_name, country, access_note, access_note_as_of, buzz, why, explore_group, photo, description) VALUES';
 
 const rows = trails.map((t) => {
   const oid = originId.get(t.origin);
@@ -65,6 +65,7 @@ const rows = trails.map((t) => {
     q(t.regionName),
     q(t.country),
     q(t.accessNote),
+    q(t.accessNoteAsOf),
     q(t.buzz),
     q(t.why),
     q(t.exploreGroup),
