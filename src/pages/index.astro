@@ -350,11 +350,12 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     document.querySelector('.mapwrap').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
-  // frame the trails currently shown (all of them when nothing matches)
-  function frameShown(animate = true) {
+  // frame the trails currently shown (all of them when nothing matches);
+  // everything: true frames every trail — the default, whole-Alps page-load view
+  function frameShown(animate = true, { everything = false } = {}) {
     const pts = [];
     Object.values(layers).forEach((L0) => {
-      if (!L0.shown) return;
+      if (!L0.shown && !everything) return;
       pts.push(L0.trail.peak, L0.trail.start);
       if (L0.line) pts.push(...L0.trail.path);
     });
@@ -585,7 +586,8 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   };
 
   // region chips — filter to one origin, measure from its home town and fly
-  // the map there; "All" keeps the current base
+  // the map there; "All" keeps the current base and flies back out to the
+  // default whole-Alps view (even after zooming in on one trail)
   const regionBtns = [...document.querySelectorAll('.fb-regions .seg')];
   function setRegion(slug, { fly = true } = {}) {
     state.region = slug;
@@ -598,7 +600,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     }
     fillBases();
     render();
-    if (fly) frameShown();
+    if (fly) frameShown(true, { everything: slug === 'all' });
   }
   regionBtns.forEach((b) => b.addEventListener('click', () => setRegion(b.dataset.region)));
 
@@ -616,6 +618,8 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     })
   );
 
+  // trip length — reframes the map on what's left (multi-day routes spread
+  // across the Alps; "All" zooms back out after drilling in)
   const kindBtns = [...document.querySelectorAll('.fb-kind .seg')];
   kindBtns.forEach((b) =>
     b.addEventListener('click', () => {
@@ -623,6 +627,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
       kindBtns.forEach((x) => press(x, x === b));
       state.limit = PAGE;
       render();
+      frameShown();
     })
   );
 
@@ -753,6 +758,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     sortSel.value = 'dist';
     state.limit = PAGE;
     render();
+    frameShown();
   });
 
   // ============================ DATA ============================
