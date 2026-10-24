@@ -363,6 +363,41 @@ header.top {
     opacity: 0.8;
 }
 
+/* zoomed-out dot clusters (leaflet.markercluster; index.astro clusterIcon):
+   a glass disc with the count, ringed by the difficulty mix of the trails
+   inside (--e / --m = where easy and medium end). Click = zoom in. */
+.clu-wrap {
+    cursor: pointer;
+}
+.clu {
+    display: grid;
+    width: 100%;
+    height: 100%;
+    padding: 3px;
+    border-radius: 50%;
+    background: conic-gradient(var(--easy) 0 var(--e), var(--medium-map) 0 var(--m), var(--hard) 0);
+    box-shadow: 0 3px 10px -3px rgba(20, 30, 45, 0.5);
+    transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.clu b {
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+    font: 600 13px/1 "Bricolage Grotesque";
+    color: var(--ink);
+}
+.clu-wrap:hover .clu,
+.clu-wrap.is-active .clu {
+    transform: scale(1.12);
+}
+/* a hovered card whose dot is inside this cluster */
+.clu-wrap.is-active .clu b {
+    background: var(--selected);
+    color: #fff;
+}
+
 /* base ("From") pin — filled black teardrop, same glyph as the From field */
 .base-pin {
     width: 34px;
@@ -634,6 +669,47 @@ header.top {
     height: 13px;
     flex: none;
 }
+/* Share / Save on the popup photo, top left (the ✕ is top right); in the
+   action row when the trail has no photo */
+.pop-quick {
+    position: absolute;
+    z-index: 2;
+    top: 8px;
+    left: 8px;
+    display: flex;
+    gap: 6px;
+}
+.pop-ic {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--ink-2);
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    transition: color 0.18s;
+}
+.pop-ic:hover {
+    color: var(--ink);
+}
+.pop-ic.is-saved {
+    color: var(--selected);
+}
+.pop-ic svg {
+    width: 15px;
+    height: 15px;
+}
+.pop-acts .pop-ic {
+    width: 34px;
+    height: 34px;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.75);
+    box-shadow: none;
+}
 
 /* ---------- filter bar (design B pill bar; index.astro + FilterBar.astro) ---------- */
 .fbar {
@@ -660,6 +736,7 @@ header.top {
     gap: 8px;
 }
 .fb-row2 {
+    gap: 6px;
     padding-top: 8px;
     border-top: 1px solid var(--line);
 }
@@ -728,9 +805,11 @@ header.top {
     flex: 1 1 200px;
     min-width: 180px;
 }
+/* small basis so row 2 fits one line at full width; grows into what's left */
 .fb-from {
-    flex: 0 1 220px;
-    min-width: 170px;
+    flex: 1 1 176px;
+    min-width: 160px;
+    max-width: 220px;
 }
 .fb-search svg,
 .fb-from svg {
@@ -740,6 +819,71 @@ header.top {
     height: 16px;
     color: var(--ink-3);
     pointer-events: none;
+}
+/* base picker: the base's country flag (or the pin) sits in the field */
+.fb-from-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    pointer-events: none;
+}
+.fb-from-icon svg {
+    position: static;
+}
+.flag {
+    flex: none;
+    width: 18px;
+    height: 14px;
+    border-radius: 2px;
+    object-fit: cover;
+    box-shadow: 0 0 0 1px rgba(20, 26, 36, 0.12);
+}
+.leaflet-tooltip .flag {
+    vertical-align: -2px;
+}
+.bases-list {
+    position: absolute;
+    z-index: 30;
+    top: calc(100% + 6px);
+    left: 0;
+    min-width: 100%;
+    width: max-content;
+    max-width: 320px;
+    max-height: 290px;
+    overflow-y: auto;
+    margin: 0;
+    padding: 6px;
+    list-style: none;
+    background: rgba(255, 255, 255, 0.98);
+    border: 1px solid var(--line);
+    border-radius: var(--r-md);
+    box-shadow: var(--shadow);
+}
+.bases-list[hidden] {
+    display: none;
+}
+.bases-list li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    padding: 0 10px;
+    border-radius: 10px;
+    cursor: pointer;
+    font: 500 14px "Hanken Grotesk";
+    color: var(--ink);
+}
+.bases-list li:hover,
+.bases-list li[aria-selected="true"] {
+    background: rgba(91, 107, 128, 0.12);
+}
+.bases-list .b-country {
+    margin-left: auto;
+    padding-left: 16px;
+    font-size: 12px;
+    color: var(--ink-3);
 }
 .fb-search input,
 .fb-from input {
@@ -762,9 +906,9 @@ input:focus {
 .fb-within {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     height: 38px;
-    padding: 0 14px;
+    padding: 0 12px;
     border: 1px solid var(--line);
     background: rgba(255, 255, 255, 0.55);
     border-radius: var(--pill);
@@ -784,7 +928,7 @@ input:focus {
 .fb-within input[type="range"] {
     -webkit-appearance: none;
     appearance: none;
-    width: 128px;
+    width: 100px; /* seven stops — 5 km … Any */
     height: 38px;
     margin: 0;
     background: transparent;
@@ -826,7 +970,7 @@ input:focus {
     font-family: "Bricolage Grotesque";
     font-weight: 600;
     font-size: 13px;
-    min-width: 42px;
+    min-width: 48px; /* fits "250 km" — no reflow while dragging */
     text-align: right;
     color: var(--ink);
 }
@@ -841,13 +985,29 @@ input:focus {
     padding: 0 12px;
     font-size: 12.5px;
 }
-.seg--must {
+/* "show only" toggles: must visit · in season now · saved */
+.fb-toggles {
+    display: flex;
+    gap: 4px;
+}
+.fb-toggles .seg {
+    padding: 0 12px;
+}
+.seg--must,
+.seg--season,
+.seg--saved {
     border-color: var(--line);
     background: rgba(255, 255, 255, 0.55);
 }
-.seg--must svg {
+.seg--must svg,
+.seg--season svg,
+.seg--saved svg {
     width: 14px;
     height: 14px;
+    flex: none;
+    color: var(--ink-3);
+}
+.seg--must svg {
     color: var(--must);
 }
 .seg--must.on {
@@ -855,17 +1015,34 @@ input:focus {
     border-color: rgba(225, 29, 72, 0.4);
     color: #b0143a;
 }
+.seg--season.on {
+    background: var(--easy-bg);
+    border-color: var(--easy-brd);
+    color: #1f6f47;
+}
+.seg--season.on svg {
+    color: var(--easy);
+}
+.seg--saved.on {
+    background: rgba(19, 48, 110, 0.1);
+    border-color: rgba(19, 48, 110, 0.36);
+    color: var(--selected);
+}
+.seg--saved.on svg {
+    color: var(--selected);
+    fill: currentColor;
+}
 .fb-sort {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
     margin-left: auto;
     font-size: 12.5px;
     color: var(--ink-3);
 }
 .fb-sort select {
     height: 38px;
-    padding: 0 34px 0 14px;
+    padding: 0 30px 0 13px;
     border-radius: var(--pill);
     cursor: pointer;
     border: 1px solid var(--line);
@@ -876,7 +1053,7 @@ input:focus {
     appearance: none;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7380' stroke-width='2.4'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
     background-repeat: no-repeat;
-    background-position: right 13px center;
+    background-position: right 11px center;
 }
 /* phone-only "Filters" button — opens the sheet holding difficulty + row 2 */
 .fb-more-btn {
@@ -956,10 +1133,27 @@ input:focus {
     flex: none;
     width: 100%;
     min-width: 0;
+    max-width: none;
 }
 .fs-slot .fb-from input,
 .fs-slot .fb-sort select {
     height: 44px;
+}
+/* in the sheet the base list opens inline under the field — a floating one
+   would be clipped by the scrolling sheet body */
+.fs-slot .fb-from {
+    flex-wrap: wrap;
+}
+.fs-slot .fb-from-icon {
+    top: 22px; /* centre of the 44px field, not of field + open list */
+}
+.fs-slot .bases-list {
+    position: static;
+    width: 100%;
+    max-width: none;
+    max-height: 240px;
+    margin-top: 6px;
+    box-shadow: var(--shadow-sm);
 }
 .fs-slot .fb-within {
     height: 46px;
@@ -973,7 +1167,12 @@ input:focus {
     justify-content: center;
     height: 38px;
 }
-.fs-slot .seg--must {
+.fs-slot .fb-toggles {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.fs-slot .fb-toggles .seg {
+    flex: 1 1 auto;
     justify-content: center;
     height: 44px;
 }
@@ -1311,6 +1510,21 @@ input:focus {
 .tag--trail svg {
     color: #a8862a;
 }
+/* in / out of season at the visitor's month (card.js seasonHTML) */
+.tag--season.is-in {
+    background: var(--easy-bg);
+    border-color: var(--easy-brd);
+    color: #1f6f47;
+    font-weight: 600;
+}
+.tag--season.is-in svg {
+    color: var(--easy);
+}
+.tag--season:not(.is-in) {
+    background: transparent;
+    border-style: dashed;
+    color: var(--ink-3);
+}
 .buzz {
     font-weight: 600;
 }
@@ -1360,6 +1574,13 @@ input:focus {
     width: 14px;
     height: 14px;
     margin-top: 1px;
+}
+/* when the note was last checked — fees and closures go stale */
+.note-asof {
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    opacity: 0.72;
 }
 
 /* "More details" disclosure: full description + facts list */
@@ -1464,6 +1685,7 @@ input:focus {
 
 .card .foot {
     display: flex;
+    flex-wrap: wrap; /* Share + Save + GPX + MAP can outgrow a narrow card beside the distance */
     align-items: center;
     justify-content: space-between;
     gap: 8px;
@@ -1485,6 +1707,7 @@ input:focus {
 }
 .card .acts {
     flex: none;
+    margin-left: auto; /* stays right-aligned when it wraps under the distance */
     display: inline-flex;
     align-items: center;
     gap: 7px;
@@ -1544,6 +1767,41 @@ input:focus {
     width: 13px;
     height: 13px;
     flex: none;
+}
+/* share + save — round icon buttons ahead of GPX / MAP */
+.card .cbtn {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-radius: 50%;
+    border: 1px solid var(--line);
+    background: rgba(255, 255, 255, 0.55);
+    color: var(--accent-dark);
+    cursor: pointer;
+    transition: 0.18s;
+}
+.card .cbtn:hover {
+    color: var(--ink);
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+}
+.card .cbtn svg {
+    width: 15px;
+    height: 15px;
+}
+/* a saved trail's bookmark (card, popup, trail sheet) — filled navy */
+.save.is-saved {
+    color: var(--selected);
+}
+.save.is-saved svg {
+    fill: currentColor;
+}
+.card .save.is-saved {
+    background: rgba(19, 48, 110, 0.1);
+    border-color: rgba(19, 48, 110, 0.3);
 }
 
 /* ---------- phone bottom sheet (BottomSheet.astro + src/lib/mobile.js) ---------- */
@@ -1675,6 +1933,45 @@ input:focus {
     height: 42px;
     flex: 1;
     justify-content: center;
+}
+/* the sheet's ✕ is in its header, so Share / Save take the photo's top right */
+.sheet .pop-quick {
+    top: 10px;
+    left: auto;
+    right: 10px;
+    gap: 8px;
+}
+.sheet .pop-quick .pop-ic {
+    width: 40px;
+    height: 40px;
+}
+.sheet .pop-ic svg {
+    width: 17px;
+    height: 17px;
+}
+
+/* "Link copied" (index.astro toast) — above the sheets too */
+.toast {
+    position: fixed;
+    z-index: 2100;
+    left: 50%;
+    bottom: calc(24px + env(safe-area-inset-bottom));
+    padding: 10px 18px;
+    border-radius: var(--pill);
+    background: rgba(35, 40, 49, 0.92);
+    color: #fff;
+    font: 600 13px "Hanken Grotesk";
+    box-shadow: var(--shadow);
+    opacity: 0;
+    transform: translate(-50%, 12px);
+    pointer-events: none;
+    transition:
+        opacity 0.2s,
+        transform 0.2s;
+}
+.toast.is-on {
+    opacity: 1;
+    transform: translate(-50%, 0);
 }
 /* sheets are a phone layout — never let one show on a wide screen */
 @media (min-width: 641px) {

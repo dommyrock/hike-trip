@@ -8,7 +8,8 @@
 //  buzz, access note, explore group) for app trails that are also in it.
 //  This file:
 //    - defines `origins`  (the region chips; drives the DB origins table, the
-//      per-origin "From" bases and the Nominatim search bias)
+//      per-origin "From" bases with their country flag, and the Nominatim
+//      search bias)
 //    - exports `trails`   (all origins merged, each entry tagged with `origin`)
 //    - exports `decorate` (display fields derived from the registry — applied
 //      to the bundled trails here and to /api/trails rows in the client)
@@ -23,6 +24,7 @@ import { baked } from './paths-baked.js';
 export const origins = [
   {
     slug: 'ortisei',
+    cc: 'it', // flag in the From picker: public/flags/it.svg
     label: 'Dolomites', // region chip
     country: 'Italy',
     name: 'Ortisei',
@@ -43,6 +45,7 @@ export const origins = [
   },
   {
     slug: 'kranjska_gora',
+    cc: 'si',
     label: 'Julian Alps',
     country: 'Slovenia',
     name: 'Kranjska Gora',
@@ -61,6 +64,7 @@ export const origins = [
   },
   {
     slug: 'austria',
+    cc: 'at',
     label: 'Austria',
     country: 'Austria',
     name: 'Innsbruck',
@@ -78,6 +82,7 @@ export const origins = [
   },
   {
     slug: 'switzerland',
+    cc: 'ch',
     label: 'Switzerland',
     country: 'Switzerland',
     name: 'Interlaken',
@@ -95,6 +100,7 @@ export const origins = [
   },
   {
     slug: 'germany',
+    cc: 'de',
     label: 'Germany',
     country: 'Germany',
     name: 'Garmisch-Partenkirchen',

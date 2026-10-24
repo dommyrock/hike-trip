@@ -318,6 +318,10 @@
     height: 13px;
     margin-top: 2px;
 }
+.pc-note .note-asof {
+    margin-left: 4px;
+    color: rgba(255, 228, 168, 0.75);
+}
 .pc-credit {
     position: relative;
     z-index: 2; /* above the stretched title link */

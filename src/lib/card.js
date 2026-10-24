@@ -10,7 +10,7 @@
 //  blank means unknown there — so every stat renders "—" rather than throwing.
 // ----------------------------------------------------------------------------
 
-import { fmtDurationShort, DIFF_LABEL } from './geo.js';
+import { fmtDurationShort, DIFF_LABEL, inSeason, fmtMonth } from './geo.js';
 import { ICON } from './icons.js';
 
 // Text from the data files and D1 goes into HTML strings — escape it.
@@ -82,8 +82,13 @@ const creditLink = (t) =>
       )} · ${esc(t.photo.license)}</a>`
     : '';
 
+// fees and closures go stale, so the note says when it was last checked
 const noteHTML = (t) =>
-  t.accessNote ? `<div class="note">${ICON.info}<span>${esc(t.accessNote)}</span></div>` : '';
+  t.accessNote
+    ? `<div class="note">${ICON.info}<span>${esc(t.accessNote)}${
+        t.accessNoteAsOf ? ` <span class="note-asof">As of ${fmtMonth(t.accessNoteAsOf)}</span>` : ''
+      }</span></div>`
+    : '';
 
 const buzzHTML = (t) =>
   t.buzz
@@ -91,6 +96,30 @@ const buzzHTML = (t) =>
         .map((i) => `<i${i <= BUZZ_RANK[t.buzz] ? ' class="on"' : ''}></i>`)
         .join('')}</span>${BUZZ_LABEL[t.buzz]}</span>`
     : '';
+
+// In / out of season at the visitor's current month — SSR renders the build
+// date's verdict, the client re-render on load corrects it. No chip when the
+// season can't be parsed.
+const seasonHTML = (t) => {
+  const now = inSeason(t.season);
+  if (now == null) return '';
+  return now
+    ? `<span class="tag tag--season is-in" title="In season now · ${esc(t.season)}">${ICON.season}In season</span>`
+    : `<span class="tag tag--season" title="Season: ${esc(t.season)}">Out of season</span>`;
+};
+
+// Share (Web Share sheet, else copy the /?trail= link) and Save (bookmark —
+// kept in localStorage by index.astro). Same two buttons on the card footer,
+// the map popup and the phone trail sheet; `cls` picks the container's look.
+export const shareBtn = (t, cls) =>
+  `<button class="${cls} share" type="button" data-id="${esc(t.id)}" title="Share this trail" aria-label="Share ${esc(
+    t.name
+  )}">${ICON.share}</button>`;
+export const saveTitle = (saved) => (saved ? 'Saved — click to remove' : 'Save this trail');
+export const saveBtn = (t, saved, cls) =>
+  `<button class="${cls} save${saved ? ' is-saved' : ''}" type="button" data-id="${esc(t.id)}" aria-pressed="${
+    saved ? 'true' : 'false'
+  }" title="${saveTitle(saved)}" aria-label="Save ${esc(t.name)}">${ICON.bookmark}</button>`;
 
 const osmUrl = ([lat, lng]) => `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=15/${lat}/${lng}`;
 
@@ -122,7 +151,8 @@ function moreHTML(t, open) {
 //   index     grid position — drives the staggered rise-in delay and eager
 //             loading of the first row of photos
 //   open      "More details" starts expanded (kept across client re-renders)
-export function cardHTML(t, { distKm, baseName, index = 0, open = false }) {
+//   saved     the visitor saved (bookmarked) it — client only, SSR can't know
+export function cardHTML(t, { distKm, baseName, index = 0, open = false, saved = false }) {
   return `<article class="card" data-id="${esc(t.id)}" data-d="${t.difficulty}" style="animation-delay:${Math.min(
     index * 45,
     320
@@ -147,14 +177,15 @@ export function cardHTML(t, { distKm, baseName, index = 0, open = false }) {
         }">${ICON.trail}${esc(t.trail ?? t.type)}</span>
         ${t.trail ? `<span class="tag">${esc(t.type)}</span>` : ''}
         <span class="tag">${esc(t.season)}</span>
+        ${seasonHTML(t)}
         <span class="tag">${ICON.access}${esc(t.access)}</span>
         ${buzzHTML(t)}
       </div>
       ${noteHTML(t)}
       ${moreHTML(t, open)}
       <div class="foot">
-        <span class="dist">${ICON.pin}${fmtDist(distKm)} km from ${esc(baseName.split(' ')[0])}</span>
-        <span class="acts">${
+        <span class="dist">${ICON.pin}${fmtDist(distKm)}&nbsp;km from&nbsp;${esc(baseName.split(' ')[0])}</span>
+        <span class="acts">${shareBtn(t, 'cbtn')}${saveBtn(t, saved, 'cbtn')}${
           t.gpx
             ? `<a class="gpxdl" href="${esc(t.gpx)}" download title="Download GPX route" aria-label="Download GPX route">${ICON.gpx}GPX</a>`
             : ''
@@ -177,11 +208,15 @@ export function tipHTML(t, { distKm, baseName }) {
 
 // Map popup and mobile trail sheet (design C): photo, name, stats, access and
 // actions. withGo adds the "Details" button that scrolls to the trail's card
-// (left out when the card is filtered out of the grid).
-export function popupHTML(t, { distKm, baseName, withGo = false }) {
+// (left out when the card is filtered out of the grid). Share / Save sit on the
+// photo (the action row is full at popup width), in the action row without one.
+export function popupHTML(t, { distKm, baseName, withGo = false, saved = false }) {
+  const quick = shareBtn(t, 'pop-ic') + saveBtn(t, saved, 'pop-ic');
   return (
     `<div class="pop">` +
-    (t.photo ? `<div class="pop-photo">${photoImg(t, true)}${creditLink(t)}</div>` : '') +
+    (t.photo
+      ? `<div class="pop-photo">${photoImg(t, true)}${creditLink(t)}<div class="pop-quick">${quick}</div></div>`
+      : '') +
     `<div class="tip-in">` +
     `<div class="tip-head"><span class="tip-name">${esc(t.name)}</span>${badgeHTML(t.difficulty)}</div>` +
     `<div class="tip-dist">${esc(t.place)} · ${fmtDist(distKm)} km from ${esc(baseName)}</div>` +
@@ -194,6 +229,7 @@ export function popupHTML(t, { distKm, baseName, withGo = false }) {
       : '') +
     (t.gpx ? `<a class="pop-btn" href="${esc(t.gpx)}" download>${ICON.gpx}GPX</a>` : '') +
     `<a class="pop-btn" href="${osmUrl(t.peak)}" target="_blank" rel="noopener">${ICON.external}OSM</a>` +
+    (t.photo ? '' : quick) +
     `</div></div></div>`
   );
 }

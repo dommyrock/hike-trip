@@ -49,9 +49,27 @@ npm run preview  # preview the production build locally
   over** the cards so that searching, filtering, sorting and changing your base
   update the map and the list together. Filtered-out trails stay on the map as
   dimmed dots; the cards page in 24 at a time ("Show more").
+- Zoomed out, the dots of the trails that pass the filters merge into **count
+  bubbles** ([Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster);
+  the ring shows the easy / medium / hard mix). Click one to zoom in; from zoom 10
+  every dot stands alone. Route lines and the dimmed filtered-out dots never cluster.
 - Filter bar: row 1 = region chips · difficulty · search; row 2 = From base ·
-  Within slider · trip length · must visit · sort. Picking a region flies the map
-  there and measures distances from its home town.
+  Within slider (5 / 10 / 25 / 50 / 100 / 250 km / Any) · trip length · must visit ·
+  in season · saved · sort. Picking a region flies the map there and measures
+  distances from its home town.
+- **The filters live in the URL**, so a filtered view can be reloaded, bookmarked
+  and shared, and Back undoes a chip click: `region=<slug>`, `diff=easy,hard`,
+  `trip=day|multi`, `within=<km>`, `must=1`, `season=1`, `saved=1`, `q=<text>`,
+  `sort=<key>` (defaults are left out, so a clean page has a clean URL).
+  `/?trail=<id>` opens one trail's popup — that's the link the Share button hands
+  out.
+- **In season**: each card says whether the trail's season (e.g. "Jun – Oct",
+  "Year-round") includes the visitor's current month; "In season" in row 2 filters
+  to those.
+- **Share + save**: every card, map popup and phone trail sheet has a Share button
+  (the phone's share sheet, else it copies the link) and a Save bookmark. Saved
+  trails are kept in this browser only (`localStorage` key `hike-trip:saved`) and
+  the "Saved" chip filters to them.
 - **Phones** get their own components: below 640px the difficulty group and row 2
   move into a **filter bottom sheet** (`BottomSheet.astro` + `src/lib/mobile.js` —
   the same elements, moved, not copied), tapping a dot opens the trail in a
@@ -70,6 +88,7 @@ hike-trip/
 │  └─ photos.csv             # photo credits for the app's own trails
 ├─ public/
 │  ├─ favicon.svg
+│  ├─ og.jpg                 # 1200×630 link-preview image (see Notes & caveats)
 │  ├─ photos/<id>.webp       # one 720×480 Wikimedia Commons photo per trail
 │  └─ gpx/                   # generated — downloadable per-trail GPX tracks
 ├─ src/
@@ -174,7 +193,8 @@ The site is installable ("Add to Home Screen") and works offline:
   `sips -z 192 192 icon-512.png --out icon-192.png` and
   `sips -z 180 180 icon-512.png --out apple-touch-icon.png`.
 - Bump `VERSION` in `sw.js` only when changing caching strategy — normal site
-  updates flow through automatically (HTML is network-first).
+  updates flow through automatically (HTML is network-first). Pages are cached by
+  path, not by query string, so filter URLs don't pile up copies of the same page.
 
 ### Setup (one-time)
 
@@ -301,8 +321,12 @@ return the same way; the screen drains the battery, not the GPS.
   needs a network connection (it fails gracefully and keeps your previous base).
 - **Tile attribution** for OpenStreetMap and OpenTopoMap is shown on the map and
   must be kept if you deploy this.
-- Set your production URL in `astro.config.mjs` (`site:`) before building if you need
-  absolute URLs.
+- **Link previews**: `astro.config.mjs` sets `site:` to the production URL, and
+  `Base.astro` builds the absolute Open Graph / X card tags from it (`og:url`,
+  `og:image`). Change `site` if the site moves. `public/og.jpg` is a 1200×630 crop of
+  [File:Lagazuoi1.JPG](https://commons.wikimedia.org/wiki/File:Lagazuoi1.JPG) by
+  Clemens Stockner (Wikimedia Commons, public domain). Previews are site-wide for
+  now; per-trail previews would need per-trail pages.
 
 Trail figures are drawn from public sources (val-gardena.com, Outdooractive,
 AllTrails and others). Always check current conditions, signage and via-ferrata

@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "astro": "^4.15.0",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3"
   },
   "devDependencies": {
     "wrangler": "^4.98.0"

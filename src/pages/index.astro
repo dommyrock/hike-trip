@@ -72,19 +72,28 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     </div>
   </BottomSheet>
   <BottomSheet id="trail-sheet" title="Trail details" quietTitle />
+  <!-- "Link copied" after Share falls back to the clipboard (always in the DOM so it's announced) -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </Base>
 
 <script>
   import L from 'leaflet';
   import 'leaflet/dist/leaflet.css';
+  // extends the global L that leaflet sets — must come after the leaflet import.
+  // Only the core (animation) CSS: the cluster icons are styled in global.css.
+  import 'leaflet.markercluster';
+  import 'leaflet.markercluster/dist/MarkerCluster.css';
   import { trails as staticTrails, origins, decorate } from '../data/trails.js';
-  import { haversineKm, DIFF_RANK } from '../lib/geo.js';
+  import { haversineKm, DIFF_RANK, inSeason } from '../lib/geo.js';
   import { ICON } from '../lib/icons.js';
-  import { cardHTML, tipHTML, popupHTML, BUZZ_RANK, esc } from '../lib/card.js';
+  import { cardHTML, tipHTML, popupHTML, saveTitle, BUZZ_RANK, esc, fmtDist } from '../lib/card.js';
   import { PHONE, sheet, relocate } from '../lib/mobile.js';
 
   const PAGE = +document.getElementById('grid').dataset.page; // cards per "Show more" step (set in the frontmatter)
-  const ANY_DIST = 25; // the Within slider's top stop == no distance limit
+  // Within slider: the range input is an index into these stops (km, from
+  // FilterBar.astro); the index one past the last stop is "Any" (no limit)
+  const WITHIN_KM = document.getElementById('dist').dataset.stops.split(',').map(Number);
+  const ANY = WITHIN_KM.length;
 
   // medium uses the matte pure yellow on the map (--medium-map in global.css);
   // badges/cards elsewhere keep the amber --medium
@@ -135,10 +144,48 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   // clicked, even after its popup closes (lets you compare lines popup-free)
   let selectedTrailId = null;
 
+  // Zoomed out, nearby dots of the trails that pass the filters merge into a
+  // count bubble (route lines are never clustered). Filtered-out trails keep
+  // their dimmed dot directly on the map, outside the clusters. From
+  // CLUSTER_OFF_ZOOM in every dot stands alone, so there's nothing to spiderfy.
+  // A marker inside a cluster has no element (getElement() is undefined) and
+  // can't open its tooltip — every caller below tolerates that. The bubbles
+  // get a pane just above the markers: the base pin (which sits in the biggest
+  // cluster at the overview) must not hide a count.
+  const CLUSTER_OFF_ZOOM = 10;
+  map.createPane('clusters').style.zIndex = 610; // markerPane 600 < this < tooltipPane 650
+  const cluster = L.markerClusterGroup({
+    disableClusteringAtZoom: CLUSTER_OFF_ZOOM,
+    maxClusterRadius: 44,
+    showCoverageOnHover: false,
+    spiderfyOnMaxZoom: false,
+    clusterPane: 'clusters',
+    iconCreateFunction: clusterIcon,
+  }).addTo(map);
+
+  // glass disc with the count, ringed by the difficulty mix of the trails
+  // inside; focusable like any marker (Enter zooms in), named "N trails"
+  function clusterIcon(c) {
+    const kids = c.getAllChildMarkers();
+    const n = kids.length;
+    const by = { easy: 0, medium: 0, hard: 0 };
+    kids.forEach((m) => by[layers[m.options.trailId]?.trail.difficulty]++);
+    const e = (by.easy / n) * 100;
+    const m = e + (by.medium / n) * 100;
+    const size = n < 10 ? 34 : n < 25 ? 40 : 46;
+    return L.divIcon({
+      className: 'clu-wrap',
+      html: `<span class="clu" style="--e:${e.toFixed(1)}%;--m:${m.toFixed(1)}%" title="${n} trails — click to zoom in"><b>${n}</b><span class="sr-only"> trails</span></span>`,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size / 2],
+    });
+  }
+
   function clearLayers() {
     map.closePopup();
+    cluster.clearLayers();
     Object.values(layers).forEach((L0) => {
-      map.removeLayer(L0.marker);
+      if (map.hasLayer(L0.marker)) map.removeLayer(L0.marker); // a dimmed dot
       map.removeLayer(L0.lines);
       if (L0.dots) map.removeLayer(L0.dots);
     });
@@ -163,9 +210,11 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
 
   // Design C map dot: difficulty fill, white rim, magenta ring for must-visits.
   // The 28px icon box is the tap target; the visible dot sits in its centre.
-  const dotIcon = (t) =>
+  // `dim` (filtered out) is part of the icon, not a toggled class: a marker
+  // moving in or out of a cluster gets a fresh element built from the icon.
+  const dotIcon = (t, dim = false) =>
     L.divIcon({
-      className: 'dot-wrap',
+      className: dim ? 'dot-wrap is-dim' : 'dot-wrap',
       html: `<span class="dot dot--${t.difficulty}${t.mustVisit ? ' dot--must' : ''}"></span>`,
       iconSize: [28, 28],
       iconAnchor: [14, 14],
@@ -184,7 +233,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
       const line = hasLine
         ? L.polyline(t.path, { color: col, weight: 4, opacity: 0.9, lineCap: 'round', lineJoin: 'round', dashArray: '7 11' })
         : null;
-      const marker = L.marker(t.peak, { icon: dotIcon(t), riseOnHover: true, alt: t.name });
+      const marker = L.marker(t.peak, { icon: dotIcon(t), riseOnHover: true, alt: t.name, trailId: t.id });
       // hover card, built on open so the distance follows the current base
       marker.bindTooltip(() => tipHTML(t, { distKm: distFromBase(t), baseName: state.base.name }), {
         className: 'trail-tip',
@@ -195,10 +244,11 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
 
       const lines = L.layerGroup(hasLine ? [casing, line] : []);
       lines.addTo(map);
-      marker.addTo(map);
 
       marker.on('mouseover', () => emphasize(t.id, true));
       marker.on('mouseout', () => emphasize(t.id, false));
+      // leaving a cluster builds a fresh element — re-apply the selection
+      marker.on('add', () => t.id === selectedTrailId && marker.getElement()?.classList.add('is-active'));
       // click = open the detail popup in place (no page scroll);
       // press-and-hold / long-press = jump straight down to the card
       // offsets compensate Leaflet's built-in 20px popup margin (tip hidden):
@@ -260,6 +310,9 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
 
       layers[t.id] = { marker, line, casing, lines, dots, trail: t, shown: true };
     });
+    // every dot starts in the cluster group (shown); render() moves the
+    // filtered-out ones onto the map, dimmed
+    cluster.addLayers(Object.values(layers).map((L0) => L0.marker));
     syncDots();
   }
 
@@ -273,15 +326,27 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     return `<div class="wp-tip-in"><b>${title}</b>${facts.length ? `<span>${facts.join(' · ')}</span>` : ''}</div>`;
   }
 
-  // filtered-out trails keep a dimmed dot on the map for context; their line
-  // and waypoint dots go
-  function setShown(L0, on) {
-    if (L0.shown === on) return;
-    L0.shown = on;
-    if (on) L0.lines.addTo(map);
-    else map.removeLayer(L0.lines);
-    L0.marker.getElement()?.classList.toggle('is-dim', !on);
-    L0.marker.setZIndexOffset(on ? 0 : -1000);
+  // filtered-out trails keep a dimmed dot on the map for context, outside the
+  // clusters; their line and waypoint dots go. Cluster membership changes in
+  // one batch each way, so the group re-clusters once rather than per marker.
+  function syncShown(shown) {
+    const join = [];
+    const leave = [];
+    Object.values(layers).forEach((L0) => {
+      const on = shown.has(L0.trail.id);
+      if (L0.shown === on) return;
+      L0.shown = on;
+      (on ? join : leave).push(L0);
+      if (on) L0.lines.addTo(map);
+      else map.removeLayer(L0.lines);
+    });
+    cluster.removeLayers(leave.map((L0) => L0.marker));
+    join.forEach((L0) => {
+      map.removeLayer(L0.marker);
+      L0.marker.setIcon(dotIcon(L0.trail)).setZIndexOffset(0);
+    });
+    cluster.addLayers(join.map((L0) => L0.marker));
+    leave.forEach((L0) => L0.marker.setIcon(dotIcon(L0.trail, true)).setZIndexOffset(-1000).addTo(map));
   }
 
   function emphasize(id, on) {
@@ -389,6 +454,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
       distKm: distFromBase(t),
       baseName: state.base.name,
       withGo: lastList.some((x) => x.id === t.id),
+      saved: saved.has(t.id),
     });
     if (PHONE.matches) {
       trailSheet.body.innerHTML = html;
@@ -402,16 +468,19 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   // closing the popup keeps the trail selected (navy) so you can compare lines
   // without a popup open — the highlight only moves when another trail is clicked
   map.on('popupclose', () => (popupTrailId = null));
-  // "Details" in either container: close it, then scroll to the card
-  function onGo(e) {
-    const btn = e.target.closest('.pop-go');
-    if (!btn) return;
+  // "Details" in either container: close it, then scroll to the card.
+  // Share / Save act in place (the popup stays open).
+  function onPopAction(e) {
+    const act = e.target.closest('.pop-go, .share, .save');
+    if (!act) return;
+    if (act.classList.contains('share')) return shareTrail(act.dataset.id);
+    if (act.classList.contains('save')) return toggleSaved(act.dataset.id);
     map.closePopup();
     trailSheet.close();
-    scrollToCard(btn.dataset.id);
+    scrollToCard(act.dataset.id);
   }
-  map.getContainer().addEventListener('click', onGo);
-  trailSheet.body.addEventListener('click', onGo);
+  map.getContainer().addEventListener('click', onPopAction);
+  trailSheet.body.addEventListener('click', onPopAction);
 
   // press-and-hold (~0.5 s) on a marker/line scrolls straight to the card.
   // contextmenu doubles as native long-press on touch (Leaflet's tapHold
@@ -448,26 +517,60 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   }
 
   // ============================ STATE + RENDER ============================
+  // The filters also live in the query string (readURL / writeURL below);
+  // base, limit and open don't.
   const state = {
     region: 'all', // origin slug or 'all'
     q: '',
     diffs: new Set(),
     kind: 'all', // 'all' | 'day' | 'multi'
     must: false,
+    season: false, // only trails in season this month
+    saved: false, // only the visitor's saved trails
     base: { name: origins[0].name, coords: origins[0].coords },
-    maxDist: ANY_DIST,
+    within: ANY, // index into WITHIN_KM; ANY = no distance limit
     sort: 'dist',
     limit: PAGE,
     open: new Set(), // cards with "More details" expanded — survives re-renders
   };
   let lastList = []; // the filtered + sorted list behind the grid
 
+  // Saved (bookmarked) trail ids, kept in this browser only. Storage can be
+  // missing or throw (private mode, blocked site data) — then saves last for
+  // this page view and nothing breaks.
+  const SAVED_KEY = 'hike-trip:saved';
+  const saved = new Set(
+    (() => {
+      try {
+        const ids = JSON.parse(localStorage.getItem(SAVED_KEY) ?? '[]');
+        return Array.isArray(ids) ? ids.filter((x) => typeof x === 'string') : [];
+      } catch {
+        return [];
+      }
+    })()
+  );
+  function storeSaved() {
+    try {
+      localStorage.setItem(SAVED_KEY, JSON.stringify([...saved]));
+    } catch {
+      /* not persisted — still saved for this page view */
+    }
+  }
+
   const distFromBase = (t) => haversineKm(state.base.coords, t.start);
 
-  // every base change goes through here so the pin and subtitle track it
-  function setBase(name, coords) {
+  // country flag (public/flags/<cc>.svg) for the base picker and the base pin
+  const FLAGS = new Set(origins.map((o) => o.cc));
+  const flagHTML = (cc) => `<img class="flag" src="/flags/${cc}.svg" alt="" width="18" height="14">`;
+  const fromIcon = document.getElementById('from-icon');
+
+  // every base change goes through here so the pin, the field's flag and the
+  // subtitle track it. cc = ISO country code when known (no flag otherwise).
+  function setBase(name, coords, cc) {
     state.base = { name, coords };
-    basePin.setLatLng(coords).setTooltipContent(name);
+    const flag = FLAGS.has(cc) ? flagHTML(cc) : '';
+    basePin.setLatLng(coords).setTooltipContent(`${flag ? flag + ' ' : ''}${esc(name)}`);
+    fromIcon.innerHTML = flag || ICON.pin;
     document.getElementById('subtitle').textContent = `Hiking finder · base: ${name}`;
   }
 
@@ -490,7 +593,9 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
         if (state.kind === 'day' && t.type === 'Multi-day') return false;
         if (state.kind === 'multi' && t.type !== 'Multi-day') return false;
         if (state.must && !t.mustVisit) return false;
-        if (state.maxDist < ANY_DIST && t.distKm > state.maxDist) return false;
+        if (state.season && !inSeason(t.season)) return false;
+        if (state.saved && !saved.has(t.id)) return false;
+        if (state.within < ANY && t.distKm > WITHIN_KM[state.within]) return false;
         if (q) {
           const hay = [t.name, t.area, t.massif, t.peakName, t.place, t.blurb].join(' ').toLowerCase();
           if (!hay.includes(q)) return false;
@@ -505,12 +610,13 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   const countEl = document.getElementById('count');
   const moreBtn = document.getElementById('more');
   const badge = document.getElementById('fb-badge');
+  const savedN = document.getElementById('saved-n');
 
   function render() {
     const list = visibleTrails();
     lastList = list;
     const shown = new Set(list.map((t) => t.id));
-    Object.values(layers).forEach((L0) => setShown(L0, shown.has(L0.trail.id)));
+    syncShown(shown);
     syncDots();
     if (popupTrailId && !shown.has(popupTrailId)) map.closePopup();
     // a filtered-out selection has no line or card any more — forget it so
@@ -522,13 +628,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     }
 
     const page = list.slice(0, state.limit);
-    grid.innerHTML = page.length
-      ? page
-          .map((t, i) =>
-            cardHTML(t, { distKm: t.distKm, baseName: state.base.name, index: i, open: state.open.has(t.id) })
-          )
-          .join('')
-      : `<div class="empty">No trails match. Try clearing a filter.</div>`;
+    grid.replaceChildren(...(page.length ? page.map(cardFor) : [emptyEl]));
     const rest = list.length - page.length;
     moreBtn.hidden = rest <= 0;
     moreBtn.textContent = `Show ${Math.min(PAGE, rest)} more`;
@@ -538,46 +638,178 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     document.getElementById('m-region').textContent =
       state.region === 'all' ? 'All regions' : originBySlug[state.region].region;
     document.getElementById('fs-count').textContent = list.length;
-    const active = state.diffs.size + (state.kind !== 'all') + state.must + (state.maxDist < ANY_DIST);
+    // the phone Filters badge counts what's set inside the filter sheet
+    const active =
+      state.diffs.size + (state.kind !== 'all') + state.must + state.season + state.saved + (state.within < ANY);
     badge.hidden = !active;
     badge.textContent = active;
-    // the selected trail keeps its highlight on the freshly rendered card
-    if (selectedTrailId) document.querySelector(`.card[data-id="${CSS.escape(selectedTrailId)}"]`)?.classList.add('is-active');
-    wireCards();
+    showSavedCount();
+  }
+  const showSavedCount = () => (savedN.textContent = trails.filter((t) => saved.has(t.id)).length);
+
+  // Card elements are kept by id and reused: a filter or search change only
+  // re-orders, attaches and detaches them (grid.replaceChildren), so photos
+  // don't reload and the rise-in plays once per card. A card is rebuilt only
+  // when its distance line changes (a new base); the saved and selected
+  // states are painted onto the cached element each time it's shown.
+  const cardCache = new Map(); // id -> { el, key }
+  const emptyEl = Object.assign(document.createElement('div'), {
+    className: 'empty',
+    textContent: 'No trails match. Try clearing a filter.',
+  });
+  function cardFor(t, i) {
+    const key = `${state.base.name}|${fmtDist(t.distKm)}`;
+    let hit = cardCache.get(t.id);
+    if (!hit || hit.key !== key) {
+      const tpl = document.createElement('template');
+      tpl.innerHTML = cardHTML(t, {
+        distKm: t.distKm,
+        baseName: state.base.name,
+        index: i,
+        open: state.open.has(t.id),
+        saved: saved.has(t.id),
+      }).trim();
+      const el = tpl.content.firstElementChild;
+      // re-attaching a node restarts CSS animations — let the rise-in play
+      // once, then switch it off (a rebuilt card doesn't rise in again)
+      if (hit) el.style.animation = 'none';
+      // (only the card's own animation — a child's animationend bubbles up too)
+      else {
+        const done = (e) => {
+          if (e.target !== el) return;
+          el.style.animation = 'none';
+          el.removeEventListener('animationend', done);
+        };
+        el.addEventListener('animationend', done);
+      }
+      wireCard(el);
+      hit = { el, key };
+      cardCache.set(t.id, hit);
+    }
+    const el = hit.el;
+    paintSave(el.querySelector('.save'), saved.has(t.id));
+    el.classList.toggle('is-active', t.id === selectedTrailId);
+    el.classList.remove('is-target');
+    return el;
   }
 
-  function wireCards() {
-    grid.querySelectorAll('.card').forEach((card) => {
-      const id = card.dataset.id;
-      card.addEventListener('mouseenter', () => {
-        emphasize(id, true);
-        layers[id]?.marker.openTooltip();
-      });
-      card.addEventListener('mouseleave', () => {
-        emphasize(id, false);
-        layers[id]?.marker.closeTooltip();
-      });
-      card.addEventListener('click', () => flyToTrail(id));
-      // the MAP button is the only thing that scrolls the page up
-      card.querySelector('.seemap')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        flyToTrail(id);
-        scrollToMap();
-      });
-      // downloads, the photo credit and the "More details" panel are their own
-      // thing — don't also fly the map
-      card
-        .querySelectorAll('.gpxdl, .credit, .more')
-        .forEach((el) => el.addEventListener('click', (e) => e.stopPropagation()));
-      const more = card.querySelector('.more');
-      more?.addEventListener('toggle', () => (more.open ? state.open.add(id) : state.open.delete(id)));
+  // listeners go on once, when a card element is created (cardFor)
+  function wireCard(card) {
+    const id = card.dataset.id;
+    // a clustered dot has no element or tooltip: light up its cluster instead
+    const clusterOf = () => {
+      const m = layers[id]?.marker;
+      const vis = m && cluster.hasLayer(m) ? cluster.getVisibleParent(m) : null;
+      return vis && vis !== m ? vis.getElement() : null;
+    };
+    card.addEventListener('mouseenter', () => {
+      emphasize(id, true);
+      layers[id]?.marker.openTooltip();
+      clusterOf()?.classList.add('is-active');
     });
+    card.addEventListener('mouseleave', () => {
+      emphasize(id, false);
+      layers[id]?.marker.closeTooltip();
+      clusterOf()?.classList.remove('is-active');
+    });
+    card.addEventListener('click', () => flyToTrail(id));
+    // the MAP button is the only thing that scrolls the page up
+    card.querySelector('.seemap')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      flyToTrail(id);
+      scrollToMap();
+    });
+    card.querySelector('.share')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      shareTrail(id);
+    });
+    card.querySelector('.save')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleSaved(id);
+    });
+    // downloads, the photo credit and the "More details" panel are their own
+    // thing — don't also fly the map
+    card
+      .querySelectorAll('.gpxdl, .credit, .more')
+      .forEach((el) => el.addEventListener('click', (e) => e.stopPropagation()));
+    const more = card.querySelector('.more');
+    more?.addEventListener('toggle', () => (more.open ? state.open.add(id) : state.open.delete(id)));
   }
 
   moreBtn.addEventListener('click', () => {
     state.limit += PAGE;
     render();
   });
+
+  // ============================ SHARE + SAVE ============================
+  // Share hands the absolute /?trail=<id> deep link (it opens that trail's
+  // popup) to the OS share sheet where there is one, else copies it.
+  async function shareTrail(id) {
+    const t = trails.find((x) => x.id === id);
+    if (!t) return;
+    const url = new URL(`/?trail=${encodeURIComponent(id)}`, location.origin).href;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: t.name, text: `${t.name} · ${t.place}`, url });
+        return;
+      } catch (err) {
+        if (err?.name === 'AbortError') return; // the visitor closed the sheet
+      }
+    }
+    toast((await copyText(url)) ? 'Link copied' : 'Couldn’t copy the link');
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // no async clipboard (insecure context, permission denied): legacy copy
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;opacity:0';
+      document.body.append(ta);
+      ta.select();
+      let ok = false;
+      try {
+        ok = document.execCommand('copy');
+      } catch {
+        /* nothing left to try */
+      }
+      ta.remove();
+      return ok;
+    }
+  }
+
+  const toastEl = document.getElementById('toast');
+  let toastTimer;
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('is-on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('is-on'), 2200);
+  }
+
+  function paintSave(btn, on) {
+    if (!btn) return;
+    btn.classList.toggle('is-saved', on);
+    btn.setAttribute('aria-pressed', String(on));
+    btn.title = saveTitle(on);
+  }
+
+  // Save updates every copy of the button (card, popup, trail sheet) in place;
+  // with the Saved filter on, the list re-renders so it stays true.
+  function toggleSaved(id) {
+    const on = !saved.has(id);
+    if (on) saved.add(id);
+    else saved.delete(id);
+    storeSaved();
+    // cached cards that aren't in the grid right now are repainted by cardFor
+    document.querySelectorAll(`.save[data-id="${CSS.escape(id)}"]`).forEach((b) => paintSave(b, on));
+    if (state.saved) render();
+    else showSavedCount();
+  }
 
   // ============================ CONTROLS ============================
   const press = (btn, on) => {
@@ -595,14 +827,19 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
     regionBtns.forEach((b) => press(b, b.dataset.region === slug));
     if (slug !== 'all') {
       const o = originBySlug[slug];
-      setBase(o.name, o.coords);
+      setBase(o.name, o.coords, o.cc);
       fromInput.value = o.name;
     }
     fillBases();
     render();
     if (fly) frameShown(true, { everything: slug === 'all' });
   }
-  regionBtns.forEach((b) => b.addEventListener('click', () => setRegion(b.dataset.region)));
+  regionBtns.forEach((b) =>
+    b.addEventListener('click', () => {
+      setRegion(b.dataset.region);
+      writeURL(true);
+    })
+  );
 
   // difficulty — three toggles; none active == show all
   const diffBtns = [...document.querySelectorAll('#fb-diff .seg')];
@@ -615,6 +852,7 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
       press(b, on);
       state.limit = PAGE;
       render();
+      writeURL(true);
     })
   );
 
@@ -628,81 +866,160 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
       state.limit = PAGE;
       render();
       frameShown();
+      writeURL(true);
     })
   );
 
+  // the "show only" toggles: must visit · in season now · saved
   const mustBtn = document.getElementById('must');
-  mustBtn.addEventListener('click', () => {
-    state.must = !state.must;
-    press(mustBtn, state.must);
-    state.limit = PAGE;
-    render();
-  });
+  const seasonBtn = document.getElementById('in-season');
+  const savedBtn = document.getElementById('saved-only');
+  [
+    [mustBtn, 'must'],
+    [seasonBtn, 'season'],
+    [savedBtn, 'saved'],
+  ].forEach(([btn, key]) =>
+    btn.addEventListener('click', () => {
+      state[key] = !state[key];
+      press(btn, state[key]);
+      state.limit = PAGE;
+      render();
+      writeURL(true);
+    })
+  );
 
-  document.getElementById('q').addEventListener('input', (e) => {
-    state.q = e.target.value;
+  const qInput = document.getElementById('q');
+  qInput.addEventListener('input', () => {
+    state.q = qInput.value;
     state.limit = PAGE;
     render();
+    writeURL(false);
   });
   const sortSel = document.getElementById('sort');
   sortSel.addEventListener('change', () => {
     state.sort = sortSel.value;
     render();
+    writeURL(true);
   });
   const distRange = document.getElementById('dist');
   const distVal = document.getElementById('distVal');
-  const showDist = () => (distVal.textContent = state.maxDist >= ANY_DIST ? 'Any' : `${state.maxDist} km`);
+  function showDist() {
+    const label = state.within >= ANY ? 'Any' : `${WITHIN_KM[state.within]} km`;
+    distVal.textContent = label;
+    distRange.setAttribute('aria-valuetext', state.within >= ANY ? 'Any distance' : `Within ${label}`);
+  }
   distRange.addEventListener('input', () => {
-    state.maxDist = +distRange.value;
+    state.within = +distRange.value;
     showDist();
     state.limit = PAGE;
     render();
+    writeURL(false);
   });
 
-  const bl = document.getElementById('bases');
-  function fillBases() {
-    bl.innerHTML = '';
-    // origin home towns first (typing one switches the region), then the
-    // selected region's base towns (every region's under "All")
-    const regions = state.region === 'all' ? origins : [originBySlug[state.region]];
-    const names = new Set([...origins.map((o) => o.name), ...regions.flatMap((o) => Object.keys(o.bases))]);
-    names.forEach((n) => {
-      const o = document.createElement('option');
-      o.value = n;
-      bl.appendChild(o);
-    });
-  }
-
+  // ---- base picker ("From"): a combobox of the known base towns, each with
+  // its country's flag (a native <datalist> can't show images). Free text
+  // still works — anything not in the list goes to Nominatim on Enter / blur.
+  const BASES = origins.flatMap((o) =>
+    Object.entries(o.bases).map(([name, coords]) => ({ name, coords, origin: o.slug, cc: o.cc, country: o.country }))
+  );
+  const fold = (s) => s.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase(); // "Rateče" ~ "ratece"
   const fromInput = document.getElementById('from');
+  const baseList = document.getElementById('bases-list');
+  let baseOpts = [];
+  let activeOpt = -1;
+
+  // the selected region's towns first; what's typed filters by town or country
+  // (just focusing the field on the current base lists them all)
+  function fillBases() {
+    const q = fold(fromInput.value.trim());
+    const all = !q || q === fold(state.base.name);
+    const mine = (b) => (state.region !== 'all' && b.origin === state.region ? 0 : 1);
+    baseOpts = BASES.filter((b) => all || fold(b.name).includes(q) || fold(b.country).includes(q)).sort(
+      (a, b) => mine(a) - mine(b)
+    );
+    activeOpt = -1;
+    fromInput.removeAttribute('aria-activedescendant');
+    baseList.innerHTML = baseOpts
+      .map(
+        (b, i) =>
+          `<li role="option" id="base-opt-${i}" data-i="${i}" aria-selected="false">${flagHTML(b.cc)}` +
+          `<span class="b-name">${esc(b.name)}</span><span class="b-country">${esc(b.country)}</span></li>`
+      )
+      .join('');
+  }
+  function openBases() {
+    fillBases();
+    baseList.hidden = !baseOpts.length;
+    fromInput.setAttribute('aria-expanded', String(!baseList.hidden));
+  }
+  function closeBases() {
+    baseList.hidden = true;
+    activeOpt = -1;
+    fromInput.setAttribute('aria-expanded', 'false');
+    fromInput.removeAttribute('aria-activedescendant');
+  }
+  function moveActive(step) {
+    if (baseList.hidden) openBases();
+    if (!baseOpts.length) return;
+    activeOpt = (activeOpt + step + baseOpts.length) % baseOpts.length;
+    baseList.querySelectorAll('[role="option"]').forEach((li, i) => li.setAttribute('aria-selected', String(i === activeOpt)));
+    const li = document.getElementById(`base-opt-${activeOpt}`);
+    fromInput.setAttribute('aria-activedescendant', li.id);
+    li.scrollIntoView({ block: 'nearest' });
+  }
+  function pickBase(i) {
+    const b = baseOpts[i];
+    if (!b) return;
+    fromInput.value = b.name;
+    closeBases();
+    resolveBase();
+  }
+  fromInput.addEventListener('focus', openBases);
+  fromInput.addEventListener('input', openBases);
+  // let a tap on an option land before the list goes away
+  fromInput.addEventListener('blur', () => setTimeout(closeBases, 150));
+  baseList.addEventListener('pointerdown', (e) => e.preventDefault()); // keep focus in the field
+  baseList.addEventListener('click', (e) => {
+    const li = e.target.closest('[role="option"]');
+    if (li) pickBase(+li.dataset.i);
+  });
+
   async function resolveBase() {
     const name = fromInput.value.trim();
     if (!name) return;
     // an origin's home town switches to its region (same as its chip)
-    const o = origins.find((x) => x.name.toLowerCase() === name.toLowerCase());
+    // matched like the list filters (accents folded): "ratece" picks Rateče
+    const o = origins.find((x) => fold(x.name) === fold(name));
     if (o) {
-      if (o.slug !== state.region) setRegion(o.slug);
-      else {
-        setBase(o.name, o.coords);
+      if (o.slug !== state.region) {
+        setRegion(o.slug);
+        writeURL(true);
+      } else {
+        setBase(o.name, o.coords, o.cc);
         render();
       }
       return;
     }
-    const known = origins.map((x) => x.bases[name]).find(Boolean);
+    const known = BASES.find((b) => fold(b.name) === fold(name));
     if (known) {
-      setBase(name, known);
+      setBase(known.name, known.coords, known.cc);
+      fromInput.value = known.name;
       render();
       return;
     }
-    // try Nominatim (OpenStreetMap) for anything else; biased to the region
+    // try Nominatim (OpenStreetMap) for anything else; biased to the region.
+    // addressdetails gives the country, so a town in a country we have a flag
+    // for gets it too.
     try {
       fromInput.style.opacity = 0.6;
       const bias = state.region === 'all' ? '' : ', ' + originBySlug[state.region].searchBias;
       const url =
-        'https://nominatim.openstreetmap.org/search?format=json&limit=1&q=' + encodeURIComponent(name + bias);
+        'https://nominatim.openstreetmap.org/search?format=json&limit=1&addressdetails=1&q=' +
+        encodeURIComponent(name + bias);
       const r = await fetch(url, { headers: { Accept: 'application/json' } });
       const j = await r.json();
       if (j && j[0]) {
-        setBase(name, [parseFloat(j[0].lat), parseFloat(j[0].lon)]);
+        setBase(name, [parseFloat(j[0].lat), parseFloat(j[0].lon)], j[0].address?.country_code);
         render();
       }
     } catch (err) {
@@ -713,9 +1030,19 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   }
   fromInput.addEventListener('change', resolveBase);
   fromInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      resolveBase();
+      moveActive(e.key === 'ArrowDown' ? 1 : -1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!baseList.hidden && activeOpt >= 0) pickBase(activeOpt);
+      else {
+        closeBases();
+        resolveBase();
+      }
+    } else if (e.key === 'Escape' && !baseList.hidden) {
+      e.stopPropagation(); // the phone filter sheet stays open
+      closeBases();
     }
   });
 
@@ -744,22 +1071,95 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   relocate(document.getElementById('fb-diff'), fsSlot);
   relocate(document.getElementById('fb-row2'), fsSlot);
   document.getElementById('fb-more-btn').addEventListener('click', filterSheet.open);
+  // Reset clears everything the sheet holds (region and search stay)
   document.getElementById('fs-reset').addEventListener('click', () => {
-    state.diffs.clear();
-    diffBtns.forEach((b) => press(b, false));
-    state.kind = 'all';
-    kindBtns.forEach((b) => press(b, b.dataset.kind === 'all'));
-    state.must = false;
-    press(mustBtn, false);
-    state.maxDist = ANY_DIST;
-    distRange.value = ANY_DIST;
-    showDist();
-    state.sort = 'dist';
-    sortSel.value = 'dist';
-    state.limit = PAGE;
+    Object.assign(state, {
+      diffs: new Set(),
+      kind: 'all',
+      must: false,
+      season: false,
+      saved: false,
+      within: ANY,
+      sort: 'dist',
+      limit: PAGE,
+    });
+    syncControls();
     render();
     frameShown();
+    writeURL(true);
   });
+
+  // ============================ URL STATE ============================
+  // The filters round-trip through the query string, so a filtered view can be
+  // reloaded, bookmarked and shared, and Back undoes a chip click. Defaults are
+  // left out (a clean page = a clean URL). Chips, toggles and sort push a
+  // history entry; search typing and slider dragging replace the current one.
+  //   region=<slug> diff=easy,hard trip=day|multi within=<km> must=1 season=1
+  //   saved=1 q=<text> sort=<key>   — plus the one-shot ?trail=<id> deep link,
+  //   which the first filter change drops
+  const DIFFS = Object.keys(DIFF_RANK);
+  const own = (o, k) => k != null && Object.hasOwn(o, k);
+  function readURL() {
+    const p = new URLSearchParams(location.search);
+    const within = WITHIN_KM.indexOf(Number(p.get('within')));
+    return {
+      region: own(originBySlug, p.get('region')) ? p.get('region') : 'all',
+      diffs: new Set((p.get('diff') ?? '').split(',').filter((d) => DIFFS.includes(d))),
+      kind: ['day', 'multi'].includes(p.get('trip')) ? p.get('trip') : 'all',
+      within: within < 0 ? ANY : within,
+      must: p.get('must') === '1',
+      season: p.get('season') === '1',
+      saved: p.get('saved') === '1',
+      q: p.get('q') ?? '',
+      sort: own(SORTS, p.get('sort')) ? p.get('sort') : 'dist',
+    };
+  }
+
+  function writeURL(push) {
+    const p = new URLSearchParams();
+    if (state.region !== 'all') p.set('region', state.region);
+    if (state.diffs.size) p.set('diff', DIFFS.filter((d) => state.diffs.has(d)).join(','));
+    if (state.kind !== 'all') p.set('trip', state.kind);
+    if (state.within < ANY) p.set('within', WITHIN_KM[state.within]);
+    if (state.must) p.set('must', '1');
+    if (state.season) p.set('season', '1');
+    if (state.saved) p.set('saved', '1');
+    if (state.q.trim()) p.set('q', state.q.trim());
+    if (state.sort !== 'dist') p.set('sort', state.sort);
+    const qs = p.toString().replace(/%2C/g, ','); // keep diff=easy,hard readable
+    const url = location.pathname + (qs ? `?${qs}` : '') + location.hash;
+    if (url === location.pathname + location.search + location.hash) return;
+    history[push ? 'pushState' : 'replaceState'](null, '', url);
+  }
+
+  // every control mirrors `state` (after the URL or the sheet's Reset set it)
+  function syncControls() {
+    regionBtns.forEach((b) => press(b, b.dataset.region === state.region));
+    diffBtns.forEach((b) => press(b, state.diffs.has(b.dataset.d)));
+    kindBtns.forEach((b) => press(b, b.dataset.kind === state.kind));
+    press(mustBtn, state.must);
+    press(seasonBtn, state.season);
+    press(savedBtn, state.saved);
+    qInput.value = state.q;
+    sortSel.value = state.sort;
+    distRange.value = state.within;
+    showDist();
+  }
+
+  // query string -> state, controls and grid: on load (no fly — loadData
+  // frames the map) and on Back / Forward (flies like the chip it undoes)
+  function applyURL({ fly }) {
+    const f = readURL();
+    const kindChanged = f.kind !== state.kind;
+    Object.assign(state, { ...f, region: state.region, limit: PAGE });
+    syncControls();
+    if (f.region !== state.region) setRegion(f.region, { fly });
+    else {
+      render();
+      if (fly && kindChanged) frameShown();
+    }
+  }
+  addEventListener('popstate', () => applyURL({ fly: true }));
 
   // ============================ DATA ============================
   // Bundled data first (instant, offline-safe), then every region from D1 via
@@ -767,9 +1167,9 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
   async function loadData() {
     trails = staticTrails;
     buildLayers();
-    render();
+    applyURL({ fly: false });
     frameShown(false);
-    applyDeepLink();
+    openDeepLink();
 
     try {
       const r = await fetch('/api/trails?origin=all');
@@ -779,27 +1179,39 @@ const counts = Object.fromEntries(origins.map((o) => [o.slug, trails.filter((t) 
       const keepPopup = popupTrailId;
       const keepSel = selectedTrailId;
       trails = j.trails.map(decorate);
+      cardCache.clear(); // D1 rows can differ from the bundle — build fresh cards
       buildLayers();
       render();
       if (keepSel && layers[keepSel]) selectTrail(keepSel);
       if (keepPopup && layers[keepPopup]) openTrailPopup(layers[keepPopup].trail, layers[keepPopup].trail.peak, -2);
+      else if (deepLinkPending) openDeepLink();
     } catch {
       /* offline or no API — keep the build-time snapshot */
     }
   }
 
-  // /?region=<origin slug> filters to a region; /?trail=<id> (the Explore
-  // page's "Show on map") flies to that trail and opens its card on the map
-  function applyDeepLink() {
-    const params = new URLSearchParams(location.search);
-    const region = params.get('region');
-    if (region && originBySlug[region]) setRegion(region, { fly: false }), frameShown(false);
-    const L0 = layers[params.get('trail')];
-    if (!L0) return;
+  // /?trail=<id> (the Explore page's "Show on map", a shared link) fits that
+  // trail and opens its card on the map. The popup belongs on the dot, so a
+  // dot still inside a cluster at that zoom is zoomed out of it first.
+  // A zoom out of a cluster is async: if the D1 swap rebuilds the layers
+  // before it lands, the cluster never calls back — loadData re-runs it.
+  let deepLinkPending = false;
+  function openDeepLink() {
+    const id = new URLSearchParams(location.search).get('trail');
+    if (!own(layers, id)) return;
+    const L0 = layers[id];
     const t = L0.trail;
-    if (L0.line) map.fitBounds(L0.line.getBounds(), { padding: [60, 60], maxZoom: 14 });
-    else map.setView(t.peak, 13);
-    openTrailPopup(t, t.peak, -2);
+    if (L0.line) map.fitBounds(L0.line.getBounds(), { padding: [60, 60], maxZoom: 14, animate: false });
+    else map.setView(t.peak, 13, { animate: false });
+    deepLinkPending = true;
+    const open = () => {
+      if (!deepLinkPending || !own(layers, id)) return;
+      deepLinkPending = false;
+      const cur = layers[id].trail; // the current dataset's row, not a stale one
+      openTrailPopup(cur, cur.peak, -2);
+    };
+    if (L0.shown && map.getZoom() < CLUSTER_OFF_ZOOM) cluster.zoomToShowLayer(L0.marker, open);
+    else open();
   }
 
   fillBases();

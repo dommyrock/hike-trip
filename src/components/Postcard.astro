@@ -4,7 +4,7 @@
 // credit sits above it so it stays clickable (no nested links).
 // data-* attributes feed the client-side filter in explore.astro.
 import { timeOf } from '../lib/card.js';
-import { DIFF_LABEL } from '../lib/geo.js';
+import { DIFF_LABEL, fmtMonth } from '../lib/geo.js';
 import { ICON } from '../lib/icons.js';
 
 interface Props {
@@ -53,7 +53,10 @@ const noteShort = t.accessNote?.split(/;|\. /)[0].replace(/\.$/, '');
       noteShort && (
         <div class="pc-note">
           <Fragment set:html={ICON.info} />
-          <span>{noteShort}</span>
+          <span>
+            {noteShort}
+            {t.accessNoteAsOf && <span class="note-asof">As of {fmtMonth(t.accessNoteAsOf)}</span>}
+          </span>
         </div>
       )
     }

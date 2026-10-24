@@ -4,12 +4,21 @@ import '../styles/global.css';
 interface Props {
   title?: string;
   description?: string;
+  // link preview (Open Graph / X card) image: a 1200×630 file under public/
+  image?: string;
+  imageAlt?: string;
 }
 
 const {
   title = 'Alpine Trails — hiking finder',
   description = 'A clean, fast hiking-trail finder across the Alps — mapped by difficulty, with photos, distance, high point and route detail.',
+  image = '/og.jpg',
+  imageAlt = 'The Lagazuoi and neighbouring Dolomite peaks above alpine meadows, on the Alta Via 1',
 } = Astro.props;
+
+// previews need absolute URLs — built from `site` in astro.config.mjs
+const pageUrl = new URL(Astro.url.pathname, Astro.site).href;
+const imageUrl = new URL(image, Astro.site).href;
 ---
 
 <!doctype html>
@@ -20,6 +29,18 @@ const {
     <meta name="description" content={description} />
     <meta name="generator" content={Astro.generator} />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+    <!-- link previews (chat apps, social): one site-wide image, per-page text -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Alpine Trails" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={pageUrl} />
+    <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content={imageAlt} />
+    <meta name="twitter:card" content="summary_large_image" />
 
     <!-- PWA: installable app + offline shell (see public/sw.js) -->
     <link rel="manifest" href="/manifest.webmanifest" />

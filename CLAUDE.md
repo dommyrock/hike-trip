@@ -53,7 +53,28 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
   renders instantly, then `/api/trails?origin=all` replaces it. Region chips
   filter (cards + dimmed dots) and set the base to that origin's home; SSR/no-JS
   shows the first 24 cards nearest Ortisei. Deep links: `/?trail=<id>` (opens its
-  popup — the Explore postcards use it) and `/?region=<slug>`.
+  popup — the Explore postcards and the Share button use it) and `/?region=<slug>`.
+- **Filters round-trip through the query string** (`readURL` / `writeURL` /
+  `applyURL` in `index.astro`): `region diff trip within must season saved q sort`,
+  defaults omitted. Chips / toggles / sort `pushState`, search typing and slider
+  dragging `replaceState`, `popstate` re-applies the URL. A new filter = a `state`
+  field + its control in `FilterBar.astro` + `readURL`/`writeURL`/`syncControls` +
+  the sheet Reset (+ the Filters badge if it lives in the sheet). The Within
+  slider is an index into `data-stops` on `#dist` (FilterBar's `WITHIN_KM`).
+- **Map dots cluster** below zoom 10 (`leaflet.markercluster`, only its core CSS —
+  the bubble is `.clu` in global.css, in its own `clusters` pane above the base
+  pin). Only trails that pass the filters are in the cluster group; filtered-out
+  ones sit on the map directly as dimmed dots (`syncShown`). A clustered marker has
+  no element: `getElement()` can be undefined and `openTooltip()` is a no-op —
+  guard any new marker code for that, and bake per-marker looks into the icon
+  (`dotIcon(t, dim)`), since leaving a cluster builds a fresh element.
+- **Saved trails** are browser-only: `localStorage['hike-trip:saved']` (JSON id
+  array), every access in try/catch. "In season" is `inSeason()` in `geo.js` against
+  the visitor's month (SSR uses the build date; the client re-render corrects it).
+- **Link previews**: `site` in `astro.config.mjs` is the production origin;
+  `Base.astro` builds absolute `og:*` / `twitter:card` tags from it (pages pass
+  `title` / `description`, optionally `image`). `public/og.jpg` = 1200×630, public
+  domain (credited in README).
 - Card / tooltip / popup markup lives only in `src/lib/card.js` (SSR + client).
   Cards show a 3-line preview; the native `<details>` "More details" holds the
   full `description ?? blurb` and the facts — **don't drop trail text from the
@@ -117,8 +138,8 @@ npm run db:apply:remote  # schema + seed → PRODUCTION D1 (destructive: drops +
   via `.leaflet-tile-pane{filter:saturate(.8)}`); Terrain toggle = OpenTopoMap.
 - PWA: `public/manifest.webmanifest` + `public/icons/` + `public/sw.js`
   (registered in `Base.astro` — PROD builds only; `astro dev` unregisters any
-  leftover SW, since cache-first on un-hashed dev URLs serves stale assets). SW is hand-rolled: navigations and `/api/trails`
-  network-first with cache fallback; `/_astro/` and fonts cache-first; map tiles
+  leftover SW, since cache-first on un-hashed dev URLs serves stale assets). SW is hand-rolled: navigations (cached by path, ignoring
+  the filter query string) and `/api/trails` network-first with cache fallback; `/_astro/` and fonts cache-first; map tiles
   cache-first capped at 400. Bump `VERSION` in sw.js only on strategy changes.
 
 ## Trail data conventions

@@ -1,7 +1,9 @@
 /* hike-trip service worker
  *
  * Offline strategy:
- *   navigations   network-first, fall back to the cached shell ('/')
+ *   navigations   network-first, fall back to the cached shell ('/'); cached by
+ *                 path — the finder's filters live in the query string, and the
+ *                 static page is the same for every ?region=… / ?trail=…
  *   /api/trails   network-first, fall back to last good response (stale > none)
  *   /gpx/*        network-first — un-hashed files that change on re-bake; a
  *                 previously fetched track stays available offline
@@ -15,7 +17,7 @@
  * (The app shell itself updates without a bump: HTML is network-first and new
  * builds reference new hashed asset URLs.)
  */
-const VERSION = 'v3'; // v3: /photos/ cache-first in its own capped cache
+const VERSION = 'v4'; // v4: navigations cached by path (drops v3's per-query-string copies)
 const SHELL = `shell-${VERSION}`;   // '/', manifest, icons
 const ASSETS = `assets-${VERSION}`; // hashed bundles + fonts
 const DATA = `data-${VERSION}`;     // /api/trails responses
@@ -42,15 +44,15 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-async function networkFirst(request, cacheName, fallbackUrl) {
+async function networkFirst(request, cacheName, fallbackUrl, key = request) {
   const cache = await caches.open(cacheName);
   try {
     const response = await fetch(request);
-    if (response.ok) cache.put(request, response.clone());
+    if (response.ok) cache.put(key, response.clone());
     return response;
   } catch (err) {
     const hit =
-      (await cache.match(request)) || (fallbackUrl && (await caches.match(fallbackUrl)));
+      (await cache.match(key)) || (fallbackUrl && (await caches.match(fallbackUrl)));
     if (hit) return hit;
     throw err;
   }
@@ -80,7 +82,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.mode === 'navigate') {
-    event.respondWith(networkFirst(request, SHELL, '/'));
+    event.respondWith(networkFirst(request, SHELL, '/', url.origin + url.pathname));
     return;
   }
 
